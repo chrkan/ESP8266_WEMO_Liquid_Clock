@@ -19,10 +19,23 @@
 #define CONFIGURATION_H
 
 
+#define DEBUG
+
+/* ------------------ Wifi --------------------- */
 
 
+//#define WIFI_RESET
+#define HOSTNAME "Liquid"
+#define WIFI_SETUP_TIMEOUT 120
+#define WIFI_AP_PASS "12345678"
+#define OTA_PASS "1234"
+#define SHOW_IP
 
-   
+/* ------------------ Zeitsserver Einstellungen --------------------- */
+
+#define ntpServerName "192.168.178.254"
+#define timezone 1
+
 
 /*
  *
@@ -47,6 +60,7 @@
  * Messwerte bekommt. Ohne AUTOSCALE werden die manuellen Min-/Max-Werte genommen.
  * Default: eingeschaltet.
  */
+  #define LDR_SIGNAL A0
   #define LDR_AUTOSCALE
   #define LDR_MANUAL_MIN 0
   #define LDR_MANUAL_MAX 1023
@@ -58,5 +72,4 @@
   #define LDR_MEAN_COUNT 32
 
 #endif
-
 
