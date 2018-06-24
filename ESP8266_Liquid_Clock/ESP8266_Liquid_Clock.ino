@@ -5,38 +5,31 @@
  * 
  * 
  * 
- * 
- * 
- * 
- * 
- * 
- * 
  * */
+#include <ArduinoOTA.h>
 #include <NtpClientLib.h>
 #include <ESP8266WiFi.h>          
 #include <DNSServer.h>            
-#include <ESP8266WebServer.h>     
+#include <ESP8266HTTPUpdateServer.h>
+#include <ESP8266mDNS.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266WiFi.h>   
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <Adafruit_NeoPixel.h>
 #include "LDR.h"
+#include "Configuration.h"
 // ------------------ Pixel Einstellungen ---------------------
 
 #define NUM_PIXEL      60       // Anzahl der NeoPixel LEDs
 #define STRIP_PIN            2        // Digital  ESP8266
 
 #define LDR_SIGNAL A0
-// ------------------ WLAN Einstellungen --------------------- 
-
-char ssid[] = "SSID";  //  your network SSID (name)
-char pass[] = "Pass";       // your network password
-
-// ------------------ Zeitserver Einstellungen ---------------------
-
-const char* ntpServerName = "192.168.178.254"; //NTPServer
-int timezone = 1;
 
 
+IPAddress myIP = { 0,0,0,0 };
 //===================================================
+
+
 
 // Der lichtabhaengige Widerstand
 LDR ldr(LDR_SIGNAL);
@@ -46,24 +39,97 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXEL, STRIP_PIN, NEO_GRB + NEO_
 int hours, minutes, seconds;
 // Hilfsvariablen fuer den organischen Effekt...
 unsigned long syncTimeInMillis, milliSecondsSyncPoint;
+ESP8266WebServer esp8266WebServer(80);
+ESP8266HTTPUpdateServer httpUpdater;
+
+
+
+
 
 void setup() {
-clearStrip();
+
   Serial.begin(115200);
-  WiFiManager wifiManager; // wifi configuration wizard
-  Serial.print("Neo-Pixel-Liquid--Clock WEMOS"); 
+  
+  Serial.print("Neo-Pixel-Liquid-Clock-WEMOS"); 
+  strip.begin();
+  strip.setBrightness(254);
+  
+  delay(200);
+ 
+WiFiManager wifiManager;
+#ifdef WIFI_RESET
+  wifiManager.resetSettings();
+#endif
+ clearStrip();
+  wifiManager.setTimeout(WIFI_SETUP_TIMEOUT);
+  wifiManager.autoConnect(HOSTNAME, WIFI_AP_PASS);
+  if (WiFi.status() != WL_CONNECTED)
+  {
    
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  wifiManager.autoConnect(ssid, pass); 
-  Serial.println("WiFi Client connected!)");
+    WiFi.mode(WIFI_AP);
+    Serial.println("No WLAN connected. Staying in AP mode.");
+    
+#ifdef BUZZER
+    digitalWrite(PIN_BUZZER, HIGH);
+    delay(1500);
+    digitalWrite(PIN_BUZZER, LOW);
+#endif
+    delay(1000);
+    myIP = WiFi.softAPIP();
+  }
+  else
+  {
+    WiFi.mode(WIFI_STA);
+    Serial.println("WLAN connected. Switching to STA mode.");
+#ifdef BUZZER
+    for (uint8_t i = 0; i <= 2; i++)
+    {
+      digitalWrite(PIN_BUZZER, HIGH);
+      delay(100);
+      digitalWrite(PIN_BUZZER, LOW);
+      delay(100);
+    }
+#endif
+    delay(1000);
+    myIP = WiFi.localIP();
+
+
+    // mDNS is needed to see HOSTNAME in Arduino IDE.
+    Serial.println("Starting mDNS responder.");
+    MDNS.begin(HOSTNAME);
+    //MDNS.addService("http", "tcp", 80);
+
+    Serial.println("Starting OTA service.");
+      Serial.println("Starting OTA service.");
+#ifdef DEBUG
+    ArduinoOTA.onStart([]()
+    {
+      Serial.println("Start OTA update.");
+    });
+    ArduinoOTA.onError([](ota_error_t error)
+    {
+      Serial.println("OTA Error: " + String(error));
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth failed.");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin failed.");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect failed.");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive failed.");
+      else if (error == OTA_END_ERROR) Serial.println("End failed.");
+    });
+    ArduinoOTA.onEnd([]()
+    {
+      Serial.println("End OTA update.");
+    });
+#endif
+    ArduinoOTA.setPassword(OTA_PASS);
+    ArduinoOTA.begin();
+
   
   NTP.begin(ntpServerName, timezone, true); // get time from NTP server pool.
   NTP.setInterval(600000); //the time will be re-synchronized every hour
 
-  
-  strip.begin();
-  strip.setBrightness(254);
+
+  Serial.println("Starting updateserver.");
+  httpUpdater.setup(&esp8266WebServer);
 
   milliSecondsSyncPoint = millis();
   
@@ -73,15 +139,20 @@ clearStrip();
     strip.show();
     delay(50);
   }
-  delay(200);
+  delay(18);
   
+}
 }
 
 void loop() {
 
   clearStrip();
 
-    
+  // Call HTTP- and OTA-handle.
+  esp8266WebServer.handleClient();
+  ArduinoOTA.handle();
+
+  
     syncTimeInMillis = millis() - milliSecondsSyncPoint;
     Serial.println("\nSync after: ");
     Serial.println(syncTimeInMillis);
@@ -140,6 +211,14 @@ void clearStrip(){
   for(int i = 0; i < NUM_PIXEL; i++) {
     strip.setPixelColor(i, 0);
   }
+}
+
+void colourstrib(int r, int g, int b ){
+
+   for(int i=0; i<60; i ++) {
+        strip.setPixelColor(i, r, g, b);
+      }
+       strip.show();
 }
 
 /**
