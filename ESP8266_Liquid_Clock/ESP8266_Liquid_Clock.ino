@@ -7,15 +7,18 @@
  * 
  * */
 #include <ArduinoOTA.h>
-#include <NtpClientLib.h>        
+//#include <NtpClientLib.h>        
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>   
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <Adafruit_NeoPixel.h>
+#include <TimeLib.h>
+#include <Timezone.h>
 #include "LDR.h"
 #include "Configuration.h"
+#include "Timezones.h"
 // ------------------ Pixel Einstellungen ---------------------
 
 #define NUM_PIXEL      60       // Anzahl der NeoPixel LEDs
@@ -52,36 +55,11 @@ void setup() {
 
     
   startShow(3);
-/* ------------------ Wifi --------------------- */
-WiFiManager wifiManager;
-#ifdef WIFI_RESET
-  wifiManager.resetSettings();
-#endif
- clearStrip();
-  wifiManager.setTimeout(WIFI_SETUP_TIMEOUT);
-  wifiManager.autoConnect(HOSTNAME, WIFI_AP_PASS);
-  if (WiFi.status() != WL_CONNECTED)
+wlan(true);
+  if (WiFi.status() == WL_CONNECTED)
   {
    
-    WiFi.mode(WIFI_AP);
-    Serial.println("No WLAN connected. Staying in AP mode.");
-    delay(1000);
-    myIP = WiFi.softAPIP();
-    startShow(1);
-  }
-  else
-  {
-    WiFi.mode(WIFI_STA);
-    Serial.println("WLAN connected. Switching to STA mode.");
-    delay(1000);
-    myIP = WiFi.localIP();
-    clearStrip();
-      
-    startShow(2);
-    // mDNS is needed to see HOSTNAME in Arduino IDE.
-    Serial.println("Starting mDNS responder.");
-    MDNS.begin(HOSTNAME);
-    //MDNS.addService("http", "tcp", 80);
+    
 /* ------------------ Wifi Ende--------------------- */
 
 /* ------------------ OTA --------------------- */
@@ -112,21 +90,15 @@ WiFiManager wifiManager;
 /* ------------------ OTA Ende --------------------- */ 
 
 /* ------------------ NTP --------------------- */
-  NTP.begin(ntpServerName, timezone, true); // get time from NTP server pool.
-  NTP.setInterval(63); //the time will be re-synchronized every hour
-/* ------------------ NTP Ende --------------------- */
+getntp();
+/* ------------------ NTP Ende ---------------- */
 
   Serial.println("Starting updateserver.");
   httpUpdater.setup(&esp8266WebServer);
 
   milliSecondsSyncPoint = millis();
   
-   // alle LEDs an...
-  for(byte i=0; i<NUM_PIXEL; i++) {
-    strip.setPixelColor(i, wheel((256 / NUM_PIXEL) * i));
-    strip.show();
-    delay(50);
-  }
+  
   delay(250);
   
 }
@@ -135,6 +107,15 @@ WiFiManager wifiManager;
 void loop() {
 
   clearStrip();
+/* ------------------ NTP --------------------- */
+if((minute() == 0 && second() == 0) || (minute() == 30 && second() == 0)) {
+  
+wlan(true);
+
+
+getntp();
+ }
+/* ------------------ NTP ENDE--------------------- */
 
   // Call HTTP- and OTA-handle.
   esp8266WebServer.handleClient();
@@ -328,3 +309,126 @@ void theaterChaseRainbow(uint8_t wait) {
     }
   }
 }
+
+/******************************************************************************
+  Get UTC time from NTP.
+******************************************************************************/
+
+void getntp()
+{
+
+if (WiFi.status() == WL_CONNECTED)
+  {
+    time_t tempNtpTime = getNtpTime(NTP_SERVER);
+    if (tempNtpTime)
+    {
+      setTime(timeZone.toLocal(tempNtpTime));
+      //WiFi.mode(WIFI_OFF);
+#ifdef DEBUG
+     // alle LEDs an...
+  for(byte i=0; i<NUM_PIXEL; i++) {
+    strip.setPixelColor(i, wheel((256 / NUM_PIXEL) * i));
+    strip.show();
+    delay(50);
+  }
+#endif
+   
+    }
+  }
+  
+}
+
+
+uint8_t errorCounterNtp = 0;
+time_t getNtpTime(const char server[])
+{
+#ifdef DEBUG
+  Serial.println("Sending NTP request to \"" + String(server) + "\". ");
+#endif
+  uint8_t packetBuffer[49] = {};
+  packetBuffer[0] = 0xE3;
+  packetBuffer[1] = 0x00;
+  packetBuffer[2] = 0x06;
+  packetBuffer[3] = 0xEC;
+  packetBuffer[12] = 0x31;
+  packetBuffer[13] = 0x4E;
+  packetBuffer[14] = 0x31;
+  packetBuffer[15] = 0x34;
+  WiFiUDP wifiUdp;
+  wifiUdp.begin(2390);
+  IPAddress timeServerIP;
+  WiFi.hostByName(server, timeServerIP);
+  wifiUdp.beginPacket(timeServerIP, 123);
+  wifiUdp.write(packetBuffer, 48);
+  wifiUdp.endPacket();
+  uint32_t beginWait = millis();
+  while ((millis() - beginWait) < NTP_TIMEOUT)
+  {
+    if (wifiUdp.parsePacket() >= 48)
+    {
+      wifiUdp.read(packetBuffer, 48);
+      uint32_t ntpTime = (packetBuffer[40] << 24) + (packetBuffer[41] << 16) + (packetBuffer[42] << 8) + packetBuffer[43];
+      // NTP time is seconds from 1900, TimeLib.h is seconds from 1970.
+      ntpTime -= 2208988800;
+      errorCounterNtp = 0;
+#ifdef DEBUG
+      Serial.printf("Time (NTP): %02u:%02u:%02u %02u.%02u.%04u (UTC)\r\n", hour(ntpTime), minute(ntpTime), second(ntpTime), day(ntpTime), month(ntpTime), year(ntpTime));
+      
+#endif
+      return ntpTime;
+    }
+  }
+  if (errorCounterNtp < 255) errorCounterNtp++;
+#ifdef DEBUG
+  Serial.printf("Error (NTP): %u\r\n", errorCounterNtp);
+#endif
+  return 0;
+}
+
+void wlan(bool an){
+  /* ------------------ Wifi --------------------- */
+  if(an) {
+
+    
+    WiFiManager wifiManager;
+#ifdef WIFI_RESET
+  wifiManager.resetSettings();
+#endif
+ clearStrip();
+  wifiManager.setTimeout(WIFI_SETUP_TIMEOUT);
+  wifiManager.autoConnect(HOSTNAME, WIFI_AP_PASS);
+  if (WiFi.status() != WL_CONNECTED)
+  {
+   
+    WiFi.mode(WIFI_AP);
+    Serial.println("No WLAN connected. Staying in AP mode.");
+    delay(1000);
+    myIP = WiFi.softAPIP();
+    startShow(1);
+  }
+  else
+  {
+    WiFi.mode(WIFI_STA);
+    Serial.println("WLAN connected. Switching to STA mode.");
+    delay(1000);
+    myIP = WiFi.localIP();
+    clearStrip();
+      
+    startShow(2);
+    // mDNS is needed to see HOSTNAME in Arduino IDE.
+    Serial.println("Starting mDNS responder.");
+    MDNS.begin(HOSTNAME);
+    //MDNS.addService("http", "tcp", 80);
+  }
+  
+  }else{
+   #ifdef WLANOFF 
+    WiFi.mode(WIFI_OFF);
+   #endif
+  }
+
+/* ------------------ Wifi Ende--------------------- */
+  
+}
+
+
