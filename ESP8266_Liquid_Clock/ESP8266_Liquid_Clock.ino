@@ -50,12 +50,8 @@ void setup() {
   
   delay(200);
 
-    // alle LEDs an...
-  for(byte i=0; i<NUM_PIXEL; i++) {
-    strip.setPixelColor(i, 0, 0 ,255);
-    strip.show();
-    delay(50);
-  }
+    
+  startShow(3);
 /* ------------------ Wifi --------------------- */
 WiFiManager wifiManager;
 #ifdef WIFI_RESET
@@ -71,6 +67,7 @@ WiFiManager wifiManager;
     Serial.println("No WLAN connected. Staying in AP mode.");
     delay(1000);
     myIP = WiFi.softAPIP();
+    startShow(1);
   }
   else
   {
@@ -78,14 +75,9 @@ WiFiManager wifiManager;
     Serial.println("WLAN connected. Switching to STA mode.");
     delay(1000);
     myIP = WiFi.localIP();
-    
-       // alle LEDs an...
-  for(byte i=0; i<NUM_PIXEL; i++) {
-    strip.setPixelColor(i, 0, 100 ,0);
-    strip.show();
-    delay(50);
-  }
-
+    clearStrip();
+      
+    startShow(2);
     // mDNS is needed to see HOSTNAME in Arduino IDE.
     Serial.println("Starting mDNS responder.");
     MDNS.begin(HOSTNAME);
@@ -240,4 +232,99 @@ void colourstrib(int r, int g, int b ){
  */
 double doubleMap(double x, double in_min, double in_max, double out_min, double out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+void startShow(int i) {
+  switch(i){
+    case 0: colorWipe(strip.Color(0, 0, 0), 50);    // Black/off
+            break;
+    case 1: colorWipe(strip.Color(255, 0, 0), 50);  // Red
+            break;
+    case 2: colorWipe(strip.Color(0, 255, 0), 50);  // Green
+            break;
+    case 3: colorWipe(strip.Color(0, 0, 255), 50);  // Blue
+            break;
+    case 4: theaterChase(strip.Color(127, 127, 127), 50); // White
+            break;
+    case 5: theaterChase(strip.Color(127,   0,   0), 50); // Red
+            break;
+    case 6: theaterChase(strip.Color(  0,   0, 127), 50); // Blue
+            break;
+    case 7: rainbow(20);
+            break;
+    case 8: rainbowCycle(20);
+            break;
+    case 9: theaterChaseRainbow(50);
+            break;
+  }
+}
+
+// Fill the dots one after the other with a color
+void colorWipe(uint32_t c, uint8_t wait) {
+  for(uint16_t i=0; i<strip.numPixels(); i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+
+void rainbow(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256; j++) {
+    for(i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, wheel((i+j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
+
+// Slightly different, this makes the rainbow equally distributed throughout
+void rainbowCycle(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+    for(i=0; i< strip.numPixels(); i++) {
+      strip.setPixelColor(i, wheel(((i * 256 / strip.numPixels()) + j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
+
+//Theatre-style crawling lights.
+void theaterChase(uint32_t c, uint8_t wait) {
+  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
+    for (int q=0; q < 3; q++) {
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, c);    //turn every third pixel on
+      }
+      strip.show();
+
+      delay(wait);
+
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
+      }
+    }
+  }
+}
+
+//Theatre-style crawling lights with rainbow effect
+void theaterChaseRainbow(uint8_t wait) {
+  for (int j=0; j < 256; j++) {     // cycle all 256 colors in the wheel
+    for (int q=0; q < 3; q++) {
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, wheel( (i+j) % 255));    //turn every third pixel on
+      }
+      strip.show();
+
+      delay(wait);
+
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
+      }
+    }
+  }
 }
