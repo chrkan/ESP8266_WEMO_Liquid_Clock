@@ -5,10 +5,11 @@ bassierend auf der Liquid Clock von Christian Aschoff
 
 Needed Libraries:
 
-NtpClientLib.h
-ESP8266WiFi.h          
-DNSServer.h            
-ESP8266WebServer.h    
-WiFiManager.h         //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-
+ArduinoOTA.h
+ESP8266HTTPUpdateServer.h
+ESP8266mDNS.h
+ESP8266WebServer.h
+ESP8266WiFi.h   
+WiFiManager.h          //https://github.com/tzapu/WiFiManager 
 Adafruit_NeoPixel.h
+TimeLib.h
