@@ -7,9 +7,7 @@
  * 
  * */
 #include <ArduinoOTA.h>
-#include <NtpClientLib.h>
-#include <ESP8266WiFi.h>          
-#include <DNSServer.h>            
+#include <NtpClientLib.h>        
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
@@ -42,10 +40,6 @@ unsigned long syncTimeInMillis, milliSecondsSyncPoint;
 ESP8266WebServer esp8266WebServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
-
-
-
-
 void setup() {
 
   Serial.begin(115200);
@@ -55,7 +49,14 @@ void setup() {
   strip.setBrightness(254);
   
   delay(200);
- 
+
+    // alle LEDs an...
+  for(byte i=0; i<NUM_PIXEL; i++) {
+    strip.setPixelColor(i, 0, 0 ,255);
+    strip.show();
+    delay(50);
+  }
+/* ------------------ Wifi --------------------- */
 WiFiManager wifiManager;
 #ifdef WIFI_RESET
   wifiManager.resetSettings();
@@ -68,12 +69,6 @@ WiFiManager wifiManager;
    
     WiFi.mode(WIFI_AP);
     Serial.println("No WLAN connected. Staying in AP mode.");
-    
-#ifdef BUZZER
-    digitalWrite(PIN_BUZZER, HIGH);
-    delay(1500);
-    digitalWrite(PIN_BUZZER, LOW);
-#endif
     delay(1000);
     myIP = WiFi.softAPIP();
   }
@@ -81,26 +76,25 @@ WiFiManager wifiManager;
   {
     WiFi.mode(WIFI_STA);
     Serial.println("WLAN connected. Switching to STA mode.");
-#ifdef BUZZER
-    for (uint8_t i = 0; i <= 2; i++)
-    {
-      digitalWrite(PIN_BUZZER, HIGH);
-      delay(100);
-      digitalWrite(PIN_BUZZER, LOW);
-      delay(100);
-    }
-#endif
     delay(1000);
     myIP = WiFi.localIP();
-
+    
+       // alle LEDs an...
+  for(byte i=0; i<NUM_PIXEL; i++) {
+    strip.setPixelColor(i, 0, 100 ,0);
+    strip.show();
+    delay(50);
+  }
 
     // mDNS is needed to see HOSTNAME in Arduino IDE.
     Serial.println("Starting mDNS responder.");
     MDNS.begin(HOSTNAME);
     //MDNS.addService("http", "tcp", 80);
+/* ------------------ Wifi Ende--------------------- */
 
+/* ------------------ OTA --------------------- */
     Serial.println("Starting OTA service.");
-      Serial.println("Starting OTA service.");
+
 #ifdef DEBUG
     ArduinoOTA.onStart([]()
     {
@@ -123,10 +117,12 @@ WiFiManager wifiManager;
     ArduinoOTA.setPassword(OTA_PASS);
     ArduinoOTA.begin();
 
-  
-  NTP.begin(ntpServerName, timezone, true); // get time from NTP server pool.
-  NTP.setInterval(600000); //the time will be re-synchronized every hour
+/* ------------------ OTA Ende --------------------- */ 
 
+/* ------------------ NTP --------------------- */
+  NTP.begin(ntpServerName, timezone, true); // get time from NTP server pool.
+  NTP.setInterval(63); //the time will be re-synchronized every hour
+/* ------------------ NTP Ende --------------------- */
 
   Serial.println("Starting updateserver.");
   httpUpdater.setup(&esp8266WebServer);
@@ -139,7 +135,7 @@ WiFiManager wifiManager;
     strip.show();
     delay(50);
   }
-  delay(18);
+  delay(250);
   
 }
 }
