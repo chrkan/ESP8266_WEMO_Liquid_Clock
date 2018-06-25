@@ -38,12 +38,15 @@ LDR ldr(LDR_SIGNAL);
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXEL, STRIP_PIN, NEO_GRB + NEO_KHZ800);
 // Die gelesene Zeit...
 int hours, minutes, seconds;
+bool startled;
 // Hilfsvariablen fuer den organischen Effekt...
 unsigned long syncTimeInMillis, milliSecondsSyncPoint;
 ESP8266WebServer esp8266WebServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 void setup() {
+
+startled =true;
 
   Serial.begin(115200);
   
@@ -100,7 +103,7 @@ getntp();
   
   
   delay(250);
-  
+  startled = false;
 }
 }
 
@@ -322,16 +325,22 @@ if (WiFi.status() == WL_CONNECTED)
     time_t tempNtpTime = getNtpTime(NTP_SERVER);
     if (tempNtpTime)
     {
-      setTime(timeZone.toLocal(tempNtpTime));
-      //WiFi.mode(WIFI_OFF);
-#ifdef DEBUG
-     // alle LEDs an...
-  for(byte i=0; i<NUM_PIXEL; i++) {
+    setTime(timeZone.toLocal(tempNtpTime));
+    
+    #ifdef WLANOFF
+      WiFi.mode(WIFI_OFF);
+    #endif
+
+    if(startled){
+    // alle LEDs an...
+    clearStrip();
+    for(byte i=0; i<NUM_PIXEL; i++) {
     strip.setPixelColor(i, wheel((256 / NUM_PIXEL) * i));
     strip.show();
     delay(50);
-  }
-#endif
+    }
+    }
+    
    
     }
   }
@@ -373,13 +382,13 @@ time_t getNtpTime(const char server[])
       errorCounterNtp = 0;
 #ifdef DEBUG
       Serial.printf("Time (NTP): %02u:%02u:%02u %02u.%02u.%04u (UTC)\r\n", hour(ntpTime), minute(ntpTime), second(ntpTime), day(ntpTime), month(ntpTime), year(ntpTime));
-      
 #endif
       return ntpTime;
     }
   }
   if (errorCounterNtp < 255) errorCounterNtp++;
 #ifdef DEBUG
+   startShow(1);
   Serial.printf("Error (NTP): %u\r\n", errorCounterNtp);
 #endif
   return 0;
@@ -404,7 +413,10 @@ void wlan(bool an){
     Serial.println("No WLAN connected. Staying in AP mode.");
     delay(1000);
     myIP = WiFi.softAPIP();
-    startShow(1);
+    if(startled){
+      startShow(1);
+    }
+    
   }
   else
   {
@@ -413,8 +425,9 @@ void wlan(bool an){
     delay(1000);
     myIP = WiFi.localIP();
     clearStrip();
-      
+      if(startled){
     startShow(2);
+      }
     // mDNS is needed to see HOSTNAME in Arduino IDE.
     Serial.println("Starting mDNS responder.");
     MDNS.begin(HOSTNAME);
@@ -430,5 +443,4 @@ void wlan(bool an){
 /* ------------------ Wifi Ende--------------------- */
   
 }
-
 
