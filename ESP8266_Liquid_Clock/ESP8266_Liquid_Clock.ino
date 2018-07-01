@@ -29,7 +29,7 @@
 
 IPAddress myIP = { 0,0,0,0 };
 //===================================================
-
+unsigned long startzeit, vergangene_zeit;
 
 
 // Der lichtabhaengige Widerstand
@@ -40,12 +40,12 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXEL, STRIP_PIN, NEO_GRB + NEO_
 int hours, minutes, seconds;
 bool startled;
 // Hilfsvariablen fuer den organischen Effekt...
-unsigned long syncTimeInMillis, milliSecondsSyncPoint;
+
 ESP8266WebServer esp8266WebServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 void setup() {
-
+startzeit = millis();
 startled =true;
 
   Serial.begin(115200);
@@ -99,11 +99,12 @@ getntp();
   Serial.println("Starting updateserver.");
   httpUpdater.setup(&esp8266WebServer);
 
-  milliSecondsSyncPoint = millis();
   
   
   delay(250);
   startled = false;
+  
+  
 }
 }
 
@@ -125,10 +126,6 @@ getntp();
   ArduinoOTA.handle();
 
   
-    syncTimeInMillis = millis() - milliSecondsSyncPoint;
-    Serial.println("\nSync after: ");
-    Serial.println(syncTimeInMillis);
-    milliSecondsSyncPoint = millis();
    
     hours = hour();
     while(hours >= 12) {
@@ -136,29 +133,31 @@ getntp();
     }
     minutes = minute();
     seconds = second();
-    Serial.print(hours);
-    Serial.print(":");
-    Serial.print(minutes);
-    Serial.print(":");
-    Serial.print(seconds);
+    
   // bei Dunkelheit kleine Hilfslichter einschalten...
     if(ldr.value() > 50) {
-      for(int i=0; i<60; i += 5) {
+      for(int i=0; i<60; i += 15) {
         strip.setPixelColor(i, 12, 12, 0);
       }
     }
+  String milli = (String) (millis() - startzeit);
   
     // Positionen berechnen und ausgeben...
-    double doubleDisplaySeconds = (double) seconds + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
+    double doubleDisplaySeconds = (double) seconds;// + (( milli.substring(3,5).toInt() *0.01));
+   Serial.print(milli);
+   Serial.print(" ");
+    Serial.print((double) seconds + (( milli.substring(3,5).toInt() *0.01)));
+    Serial.print('\n');
     setFloatPixelColor(doubleDisplaySeconds, 0xff, 0x00, 0x00);
   
     double doubleDisplayMinutes = (double) minutes + (doubleDisplaySeconds / 60.0);
     setFloatPixelColor(doubleDisplayMinutes, 0x00, 0xff, 0x00);
+    
   
     double doubleDisplayHours = doubleMap((double) (hours * 60.0 + minutes), 0.0, 12.0 * 60.0, 0.0, 60.0);
     setFloatPixelColor(doubleDisplayHours, 0x00, 0x00, 0xff);
-      strip.show();
-    delay(18);
+    strip.show();
+ 
 }
 
 
