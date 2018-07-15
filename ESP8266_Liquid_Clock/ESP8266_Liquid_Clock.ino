@@ -6,12 +6,13 @@
  * 
  * 
  * */
-#include <ArduinoOTA.h>
+
 //#include <NtpClientLib.h>        
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>   
+#include <ArduinoOTA.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <Adafruit_NeoPixel.h>
 #include <TimeLib.h>
@@ -29,7 +30,7 @@
 
 IPAddress myIP = { 0,0,0,0 };
 //===================================================
-unsigned long startzeit, vergangene_zeit;
+unsigned long syncTimeInMillis, milliSecondsSyncPoint, second_befor, milli_befor;
 
 
 // Der lichtabhaengige Widerstand
@@ -45,7 +46,7 @@ ESP8266WebServer esp8266WebServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 void setup() {
-startzeit = millis();
+milliSecondsSyncPoint = millis();
 startled =true;
 
   Serial.begin(115200);
@@ -104,11 +105,31 @@ getntp();
   delay(250);
   startled = false;
   
-  
 }
+//setze milli 
+milli_befor = millis();
 }
 
 void loop() {
+  long milli =0;
+
+  
+if(second() == second_befor)
+{
+  //wenn in der gleichen sekunde dann ziehe milli von millis ab
+milli = millis() - milli_befor;
+  
+}else{
+  //setze milli auf 0
+  milli = 0;
+  //setze second_Befor auf die aktuelle sekunde
+  second_befor = second();
+  //setze milli_befor auf aktuelle millis
+  milli_befor = millis();
+}
+  
+   syncTimeInMillis = millis() - milliSecondsSyncPoint;
+
 
   clearStrip();
 /* ------------------ NTP --------------------- */
@@ -134,20 +155,19 @@ getntp();
     minutes = minute();
     seconds = second();
     
+   
+    
   // bei Dunkelheit kleine Hilfslichter einschalten...
     if(ldr.value() > 50) {
       for(int i=0; i<60; i += 15) {
         strip.setPixelColor(i, 12, 12, 0);
       }
     }
-  String milli = (String) (millis() - startzeit);
+
   
     // Positionen berechnen und ausgeben...
-    double doubleDisplaySeconds = (double) seconds;// + (( milli.substring(3,5).toInt() *0.01));
-   Serial.print(milli);
-   Serial.print(" ");
-    Serial.print((double) seconds + (( milli.substring(3,5).toInt() *0.01)));
-    Serial.print('\n');
+   // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
+   double doubleDisplaySeconds = (double) second() + (milli * 0.001);
     setFloatPixelColor(doubleDisplaySeconds, 0xff, 0x00, 0x00);
   
     double doubleDisplayMinutes = (double) minutes + (doubleDisplaySeconds / 60.0);
