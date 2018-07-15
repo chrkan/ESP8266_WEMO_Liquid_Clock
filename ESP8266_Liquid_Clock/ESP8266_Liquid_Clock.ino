@@ -30,7 +30,7 @@
 
 IPAddress myIP = { 0,0,0,0 };
 //===================================================
-unsigned long syncTimeInMillis, milliSecondsSyncPoint, second_befor, milli_befor;
+unsigned long second_befor, milli_befor;
 
 
 // Der lichtabhaengige Widerstand
@@ -46,7 +46,7 @@ ESP8266WebServer esp8266WebServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 void setup() {
-milliSecondsSyncPoint = millis();
+
 startled =true;
 
   Serial.begin(115200);
@@ -128,7 +128,6 @@ milli = millis() - milli_befor;
   milli_befor = millis();
 }
   
-   syncTimeInMillis = millis() - milliSecondsSyncPoint;
 
 
   clearStrip();
