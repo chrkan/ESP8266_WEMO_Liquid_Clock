@@ -2,7 +2,7 @@
 
 bassierend auf der Liquid Clock von Christian Aschoff
 
-================================================ Needed Libraries ==============================================================================
+======================= Needed Libraries =======================
 
 
 ArduinoOTA.h
@@ -21,7 +21,7 @@ Adafruit_NeoPixel.h
 
 TimeLib.h
 
-================================================ Initial Setup ==============================================================================
+======================= Initial Setup =======================
 
 You dont need to edit the sketch, all settings can make wireless over wifi.
 
