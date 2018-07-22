@@ -1,6 +1,7 @@
 # ESP8266_WEMO_Liquid_Clock
 
 bassierend auf der Liquid Clock von Christian Aschoff
+Web Setup Idee von http://tmw-it.ch/qlockwork/
 
 ======================= Needed Libraries =======================
 
