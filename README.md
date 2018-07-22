@@ -24,13 +24,12 @@ TimeLib.h
 
 ======================= Initial Setup =======================
 
-You dont need to edit the sketch, all settings can make wireless over wifi.
+You do not have to edit the sketch, all settings can be wireless via WLAN.
 
-After the first flash the Liqud Clock circle will be blue, now you will find a wifi network withe the name Liquid.
-Connect your divice with it and edit the wifi settings.
+After the first flash, the Liqud Clock circle will be blue, now you will find a WiFi network called Liquid. Connect your device and edit the Wi-Fi settings.
 
-If it workt the Liquid Clock restart and the ring will show blue followed of green. The LiquidClock has connect to your Wifinetwork. 
+If it works, restart the Liquid Clock and the ring will turn blue followed by green. The LiquidClock has a connection to your Wifinetwork.
 
-Now the Liquid Clock is connect to the NTP Server if it works you see an rainbow cirle. If it is not posible to connect to your NTP Server please connect your browser withe the LiquidClock an edit in the Settings the NTP Server.
+Now the Liquid Clock is connected to the NTP server, if it works, you will see a rainbow circle. If it is not possible (red circle) to connect to your NTP server, please connect your browser with the LiquidClock and edit in the settings of the NTP server.
 
 
