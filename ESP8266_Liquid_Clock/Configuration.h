@@ -101,6 +101,8 @@
 
   #define DEFAULT_LDR_Status true
   #define DEFAULT_LDR_LED 15
+  #define DEFAULT_LDR_Brightness 50
+  
 
 #endif
 

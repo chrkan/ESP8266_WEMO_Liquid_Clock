@@ -161,7 +161,7 @@ getntp();
    
     
   // bei Dunkelheit kleine Hilfslichter einschalten...
-    if(ldr.value() > 50 && settings.getUseLdr()) {
+    if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
       for(int i=0; i<60; i += settings.getldrDot()) {
         strip.setPixelColor(i, 12, 12, 0);
       }
@@ -503,13 +503,15 @@ String htmlTop(String page)
   message += "<button onclick=\"window.location.href='/'\"><i class=\"fa fa-home\"></i></button> ";
   message += "<button onclick=\"window.location.href='/reset'\"><i class=\"fa fa-power-off\"></i></button> ";
   message += "<button onclick=\"window.location.href='/Settings'\"><i class=\"fa fa-gear\"></i></button> ";
+   message += "<span style=\"color:white\">";
   return message;
 }
 
 
 String htmlButton()
 {
-  String message = "</body>";
+  String message = "</span>";
+  message += "</body>";
   message += "</html>";
   return message;
 }
@@ -561,7 +563,7 @@ void handleRoot()
   message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
 
 
-  message += "<br><br>"+String(settings.getVersion());
+  message += "<br><br>Setting Version: "+String(settings.getSettingVersion());
   
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);
@@ -586,6 +588,11 @@ if(esp8266WebServer.arg("DEFAULT_LDR_Status") == "1")
   message += "false";
   settings.setUseLdr(false);
 }
+
+settings.setBrightness(esp8266WebServer.arg("br").toInt());
+ 
+message += "<br>Brightness: "+esp8266WebServer.arg("br") +" %";
+
 message += "<br>Help Dots every "+esp8266WebServer.arg("ldrdots") +" Pixel";
 settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
 
@@ -623,7 +630,18 @@ void handleSettings()
     message += "<input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"0\"";
     if (!settings.getUseLdr()) message += " checked";
     message += "> off";
-    
+
+message += "<br><select name=\"br\">";
+  for (int i = 10; i <= 100; i += 10)
+  {
+    message += "<option value=\"" + String(i) + "\"";
+    if (i == settings.getBrightness()) message += " selected";
+    message += ">";
+    message += String(i) + "</option>";
+  }
+  message += "</select> %";
+
+
     message += "<br>Help Dots every <select name=\"ldrdots\">";;
     message += "<option value=\""+String(settings.getldrDot())+"\" selected>"+String(settings.getldrDot())+"</option>";
     message += "<option value=\"5\">5</option>";
@@ -633,7 +651,7 @@ void handleSettings()
     message += "</select> Pixels.";
     message += "<br><br>NTP:<input type=\"text\" name=\"ntp\" value=\"";
   settings.getntpServer(location, sizeof(location));
-  message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter Location ...\">";
+  message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
     message += "<br><br><button title=\"Save Settings.\"><i class=\"fa fa-check\"></i></button>";
   message += "</form>";
   

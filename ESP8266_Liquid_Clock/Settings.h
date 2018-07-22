@@ -9,8 +9,8 @@
 #include <EEPROM.h>
 #include "Configuration.h"
 
-#define SETTINGS_MAGIC_NUMBER 0x09
-#define SETTINGS_VERSION 0
+#define SETTINGS_MAGIC_NUMBER 0x01
+#define SETTINGS_SettingVersion 0
 
 #define LEN_LOC_STR 100
 
@@ -31,19 +31,22 @@ public:
   void saveToEEPROM();
   void resetToDefault();
 
-  int getVersion();
+  int getSettingVersion();
 
   int16_t getldrDot();
   void setldrDot(int16_t ldrDot);
 
+    int16_t getBrightness();
+  void setBrightness(int16_t brightness);
+
 private:
   struct MySettings {
     uint8_t magicNumber;
-    uint8_t version;
+    uint8_t SettingVersion;
     boolean useLdr;
-    
     char ntpServer[LEN_LOC_STR];
     int16_t ldrDot;
+    int16_t brightness;
   } mySettings;
 
   void loadFromEEPROM();

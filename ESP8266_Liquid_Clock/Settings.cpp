@@ -32,8 +32,8 @@ char* Settings::getntpServer(char* ntpServer, int size) {
   return ntpServer;
 
 }
-int Settings::getVersion() {
-  return mySettings.version;
+int Settings::getSettingVersion() {
+  return mySettings.SettingVersion;
 }
 
 int16_t Settings::getldrDot() {
@@ -44,17 +44,26 @@ void Settings::setldrDot(int16_t ldrDot) {
   mySettings.ldrDot = ldrDot;
 }
 
+
+int16_t Settings::getBrightness() {
+  return mySettings.brightness;
+}
+
+void Settings::setBrightness(int16_t ledBrightness) {
+  mySettings.brightness = ledBrightness;
+}
+
 // Set all defaults.
 void Settings::resetToDefault() {
   Serial.println("*** Settings set to defaults in EEPROM. ***");
   mySettings.magicNumber = SETTINGS_MAGIC_NUMBER;
-  mySettings.version = SETTINGS_VERSION;
+  mySettings.SettingVersion = SETTINGS_SettingVersion;
   mySettings.useLdr = DEFAULT_LDR_Status;
   char charntp[50] = DEFAULT_NTP_SERVER;
   int tmp = sizeof(mySettings.ntpServer);
   memcpy(mySettings.ntpServer, charntp, min(tmp,50));
-
   mySettings.ldrDot = DEFAULT_LDR_LED;
+  mySettings.brightness = DEFAULT_LDR_Brightness;
   saveToEEPROM();
 }
 
@@ -63,14 +72,14 @@ void Settings::loadFromEEPROM() {
   Serial.println("Settings loaded from EEPROM.");
   EEPROM.begin(512);
   EEPROM.get(0, mySettings);
-  if ((mySettings.version == SETTINGS_VERSION)) // (mySettings.magicNumber != SETTINGS_MAGIC_NUMBER) ||
+  if ((mySettings.magicNumber != SETTINGS_MAGIC_NUMBER) ||(mySettings.SettingVersion == SETTINGS_SettingVersion))
     resetToDefault();
   EEPROM.end();
 }
 
 // Write settings to EEPROM.
 void Settings::saveToEEPROM() {
-  mySettings.version = mySettings.version + 1;
+  mySettings.SettingVersion = mySettings.SettingVersion + 1;
   Serial.println("Settings saved to EEPROM.");
   EEPROM.begin(512);
   EEPROM.put(0, mySettings);
