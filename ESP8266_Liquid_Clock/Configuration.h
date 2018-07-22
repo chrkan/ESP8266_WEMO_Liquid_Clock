@@ -21,6 +21,8 @@
 
 #define DEBUG
 
+
+
 /* ------------------ Wifi --------------------- */
 
 
@@ -34,7 +36,7 @@
 
 /* ------------------ Zeitsserver Einstellungen --------------------- */
 
-#define NTP_SERVER "192.168.178.254"
+#define DEFAULT_NTP_SERVER "pool.ntp.org"
 #define NTP_TIMEOUT 2000
 
 
@@ -75,13 +77,7 @@
  *
  */
 
-// ------------------ Tasten --------------------- 
-/*
- * Die Zeit in Millisekunden, innerhalb derer Prellungen der Taster nicht als Druecken zaehlen.
- * (Und damit auch die Tastaturwiederholrate)
- * Default: 300
- */
-  #define BUTTON_TRESHOLD 300
+
 
 
 
@@ -102,6 +98,9 @@
  * Default: 32
  */
   #define LDR_MEAN_COUNT 32
+
+  #define DEFAULT_LDR_Status true
+  #define DEFAULT_LDR_LED 15
 
 #endif
 
