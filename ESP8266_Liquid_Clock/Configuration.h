@@ -20,19 +20,39 @@
 
 
 #define DEBUG
+/* ------------------ Colors --------------------- */
+  #define DEFAULT_Second 1
+  #define DEFAULT_Minute 17
+  #define DEFAULT_Hour 9
+  #define DEFAULT_Help_Dot 25
 
+// 00 WHITE
+// 01 RED
+// 02 RED_25
+// 03 RED_50
+// 04 ORANGE
+// 05 YELLOW
+// 06 YELLOW_25
+// 07 YELLOW_50
+// 08 GREENYELLOW
+// 09 GREEN
+// 10 GREEN_25
+// 11 GREEN_50
+// 12 MINTGREEN
+// 13 CYAN
+// 14 CYAN_25
+// 15 CYAN_50
+// 16 LIGHTBLUE
+// 17 BLUE
+// 18 BLUE_25
+// 19 BLUE_50
+// 20 VIOLET
+// 21 MAGENTA
+// 22 MAGENTA_25
+// 23 MAGENTA_50
+// 24 PINK
+// 25 Dark_Yellow
 
-
-/* ------------------ Wifi --------------------- */
-
-
-//#define WIFI_RESET
-//#define WLANOFF  //Schaltet Wlan nur für Sync an
-#define HOSTNAME "Liquid"
-#define WIFI_SETUP_TIMEOUT 120
-#define WIFI_AP_PASS "12345678"
-#define OTA_PASS "1234"
-#define SHOW_IP
 
 /* ------------------ Zeitsserver Einstellungen --------------------- */
 
@@ -71,17 +91,16 @@
 //#define TIMEZONE_LHST  // LHST  Lord Howe Standard Time UTC+10.5
 //#define TIMEZONE_SBT   // SBT   Solomon Islands Time UTC+11
 //#define TIMEZONE_NZST  // NZST  New Zealand Standard Time UTC+12
-/*
- *
- * Seltener zu aendernde Einstellungen...
- *
- */
+/* ------------------ Wifi --------------------- */
+
+#define HOSTNAME "Liquid"
+#define WIFI_SETUP_TIMEOUT 120
+#define WIFI_AP_PASS "12345678"
+#define OTA_PASS "1234"
+#define SHOW_IP
 
 
-
-
-
-// ------------------ Lichtabhaengiger Widerstand ---------------------
+/* ------------------ LDR --------------------- */
 /*
  * Sollen die Grenzwerte vom LDR automatisch angepasst werden? Bei einem Neustart der QlockTwo kann
  * das Display flackern, dann muss man einmal ueber den LDR 'wischen', damit er verschiedene

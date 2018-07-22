@@ -22,6 +22,7 @@
 #include "LDR.h"
 #include "Configuration.h"
 #include "Timezones.h"
+#include "Colors.h"
 
 Settings settings;
 // ------------------ Pixel Einstellungen ---------------------
@@ -44,6 +45,10 @@ unsigned long second_befor, milli_befor;
 ESP8266WebServer esp8266WebServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
+
+
+ /* ------------------ Setup --------------------- */
+
 void setup() {
 
 startled =true;
@@ -63,7 +68,7 @@ wlan(true);
   {
    setupWebServer();
     
-/* ------------------ Wifi Ende--------------------- */
+
 
 /* ------------------ OTA --------------------- */
     Serial.println("Starting OTA service.");
@@ -111,7 +116,7 @@ getntp();
 milli_befor = millis();
 }
 
-
+ /* ------------------ loop --------------------- */
 
 void loop() {
   long milli =0;
@@ -159,26 +164,30 @@ getntp();
     seconds = second();
     
    
-    
+    int color = settings.getColHel();
   // bei Dunkelheit kleine Hilfslichter einschalten...
     if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
       for(int i=0; i<60; i += settings.getldrDot()) {
-        strip.setPixelColor(i, 12, 12, 0);
+        strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
       }
     }
 
+
+ /* ------------------ led --------------------- */
   
     // Positionen berechnen und ausgeben...
    // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
    double doubleDisplaySeconds = (double) second() + (milli * 0.001);
-    setFloatPixelColor(doubleDisplaySeconds, 0xff, 0x00, 0x00);
-  
-    double doubleDisplayMinutes = (double) minutes + (doubleDisplaySeconds / 60.0);
-    setFloatPixelColor(doubleDisplayMinutes, 0x00, 0xff, 0x00);
+   color = settings.getColSec();
+    setFloatPixelColor(doubleDisplaySeconds, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
     
-  
+    color = settings.getColMin();
+    double doubleDisplayMinutes = (double) minutes + (doubleDisplaySeconds / 60.0);
+    setFloatPixelColor(doubleDisplayMinutes, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+    
+    color = settings.getColHou();
     double doubleDisplayHours = doubleMap((double) (hours * 60.0 + minutes), 0.0, 12.0 * 60.0, 0.0, 60.0);
-    setFloatPixelColor(doubleDisplayHours, 0x00, 0x00, 0xff);
+    setFloatPixelColor(doubleDisplayHours, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
     strip.show();
  
 }
@@ -262,6 +271,10 @@ void startShow(int i) {
             break;
     case 9: theaterChaseRainbow(50);
             break;
+    case 10: colorWipe(strip.Color(255,140,0), 50);    // Orange
+            break;
+    case 11: theaterChase(strip.Color(255,140,0), 50);    // Orange
+            break;
   }
 }
 
@@ -335,9 +348,7 @@ void theaterChaseRainbow(uint8_t wait) {
   }
 }
 
-/******************************************************************************
-  Get UTC time from NTP.
-******************************************************************************/
+ /* ------------------ NTP --------------------- */
 
 void getntp()
 {
@@ -414,8 +425,12 @@ time_t getNtpTime(const char server[])
   return 0;
 }
 
+
+ /* ------------------ Wifi --------------------- */
+
+ 
 void wlan(bool an){
-  /* ------------------ Wifi --------------------- */
+ 
   if(an) {
     
     WiFiManager wifiManager;
@@ -560,6 +575,7 @@ void handleRoot()
     message +="deactive ";
   }
   message += String(ldr.value()) + " (min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
+  message += "<br>Help Dots every: "+String(settings.getldrDot())+" Pixels, by "+String(settings.getBrightness())+"% Brightness." ;
   message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
 
 
@@ -573,7 +589,7 @@ void handleRoot()
 
 void handleCommitSettings()
 {
-
+startShow(2); //Green
 
 
 String message = htmlTop("CommitSettings");
@@ -602,13 +618,22 @@ settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
   settings.setntpServer(text, sizeof(text));
   message +="<br><br>NTP Server: "+esp8266WebServer.arg("ntp");
 
-
+  settings.setColSec(esp8266WebServer.arg("colsec").toInt());
+  settings.setColMin(esp8266WebServer.arg("colmin").toInt());
+  settings.setColHou(esp8266WebServer.arg("colhour").toInt());
+  settings.setColHel(esp8266WebServer.arg("colhel").toInt());
 
   
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);  
   delay(500);
   settings.saveToEEPROM();
+
+
+  if(esp8266WebServer.arg("ntp") != esp8266WebServer.arg("ntp_old"))
+  {
+    handleReset();
+  }
 
   
 }
@@ -627,11 +652,11 @@ void handleSettings()
   message += "<br>LDR: <input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"1\"";
     if (settings.getUseLdr()) message += " checked";
     message += "> on ";
-    message += "<input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"0\"";
+    message += " <input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"0\"";
     if (!settings.getUseLdr()) message += " checked";
     message += "> off";
 
-message += "<br><select name=\"br\">";
+message += "<br>Help Dots after <select name=\"br\">";
   for (int i = 10; i <= 100; i += 10)
   {
     message += "<option value=\"" + String(i) + "\"";
@@ -639,7 +664,7 @@ message += "<br><select name=\"br\">";
     message += ">";
     message += String(i) + "</option>";
   }
-  message += "</select> %";
+  message += "</select> % from the LDR";
 
 
     message += "<br>Help Dots every <select name=\"ldrdots\">";;
@@ -650,8 +675,51 @@ message += "<br><select name=\"br\">";
     message += "<option value=\"30\">30</option>";
     message += "</select> Pixels.";
     message += "<br><br>NTP:<input type=\"text\" name=\"ntp\" value=\"";
-  settings.getntpServer(location, sizeof(location));
-  message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
+    settings.getntpServer(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
+    message += "<br><br><input type=\"hidden\" name=\"ntp_old\" value=\"";
+    settings.getntpServer(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
+    message +="<br><br>";
+
+    
+    message += "Second: <select name=\"colsec\">";
+    uint8_t colorNum = settings.getColSec();
+    for(uint8_t j = 0; j <= COLOR_COUNT; j++){
+      message += "<option value=\"" +String(j) + "\"";
+      if (colorNum == j) message += " selected";
+      message += ">";
+      message += String(FPSTR(sColorStr[j])) + "</option>";
+    }
+    message += "</select>";
+    message += "<br>Minutes: <select name=\"colmin\">";
+    colorNum = settings.getColMin();
+    for(uint8_t j = 0; j <= COLOR_COUNT; j++){
+      message += "<option value=\"" +String(j) + "\"";
+      if (colorNum == j) message += " selected";
+      message += ">";
+      message += String(FPSTR(sColorStr[j])) + "</option>";
+    }
+    message += "</select>";
+    message += "<br>Hour: <select name=\"colhour\">";
+    colorNum = settings.getColHou();
+    for(uint8_t j = 0; j <= COLOR_COUNT; j++){
+      message += "<option value=\"" +String(j) + "\"";
+      if (colorNum == j) message += " selected";
+      message += ">";
+      message += String(FPSTR(sColorStr[j])) + "</option>";
+    }
+    message += "</select>";
+
+     message += "<br>Help Dots: <select name=\"colhel\">";
+    colorNum = settings.getColHel();
+    for(uint8_t j = 0; j <= COLOR_COUNT; j++){
+      message += "<option value=\"" +String(j) + "\"";
+      if (colorNum == j) message += " selected";
+      message += ">";
+      message += String(FPSTR(sColorStr[j])) + "</option>";
+    }
+    message += "</select>";
     message += "<br><br><button title=\"Save Settings.\"><i class=\"fa fa-check\"></i></button>";
   message += "</form>";
   
@@ -662,7 +730,10 @@ message += "<br><select name=\"br\">";
 }
 void handleReset()
 {
+  startShow(10); //Orange
+  callBack();
   esp8266WebServer.send(200, "text/plain", "By...");
+  
   delay(1000);
   callRoot();
   ESP.restart();
@@ -671,6 +742,8 @@ void handleReset()
 
 void handleFactoryReset()
 {
+  startShow(10); //Orange
+  callBack();
   settings.resetToDefault();
   esp8266WebServer.send(200, "text/plain", "OK.");
   ESP.restart();
@@ -678,6 +751,8 @@ void handleFactoryReset()
 
 void handleWiFiReset()
 {
+  startShow(10); //Orange
+  callBack();
   esp8266WebServer.send(200, "text/plain", "OK.");
       WiFiManager wifiManager;
       wifiManager.resetSettings();
