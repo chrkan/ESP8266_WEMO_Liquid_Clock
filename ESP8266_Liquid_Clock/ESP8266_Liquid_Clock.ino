@@ -574,7 +574,7 @@ void handleRoot()
   }else{
     message +="deactive ";
   }
-  message += String(ldr.value()) + " (min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
+  message += String(ldr.value()) + "  %(min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
   message += "<br>Help Dots every: "+String(settings.getldrDot())+" Pixels, by "+String(settings.getBrightness())+"% Brightness." ;
   message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
 
@@ -646,17 +646,17 @@ void handleSettings()
     String message = htmlTop("Settings");
     message += "<form action=\"/commitSettings\">";
     
-    
+    message += "<br><br><table align=\"center\"><tr><th>";
   
 
-  message += "<br>LDR: <input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"1\"";
+  message += "LDR: </th><th><input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"1\"";
     if (settings.getUseLdr()) message += " checked";
     message += "> on ";
     message += " <input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"0\"";
     if (!settings.getUseLdr()) message += " checked";
-    message += "> off";
+    message += "> off</th></tr>";
 
-message += "<br>Help Dots after <select name=\"br\">";
+message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
   for (int i = 10; i <= 100; i += 10)
   {
     message += "<option value=\"" + String(i) + "\"";
@@ -664,26 +664,31 @@ message += "<br>Help Dots after <select name=\"br\">";
     message += ">";
     message += String(i) + "</option>";
   }
-  message += "</select> % from the LDR";
+  message += "</select> %  LDR</td></tr>";
 
-
-    message += "<br>Help Dots every <select name=\"ldrdots\">";;
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+    
+    message += "<tr><td>Help Dots every </td><td><select name=\"ldrdots\">";
     message += "<option value=\""+String(settings.getldrDot())+"\" selected>"+String(settings.getldrDot())+"</option>";
     message += "<option value=\"5\">5</option>";
     message += "<option value=\"10\">10</option>";
     message += "<option value=\"15\">15</option>";
     message += "<option value=\"30\">30</option>";
-    message += "</select> Pixels.";
-    message += "<br><br>NTP:<input type=\"text\" name=\"ntp\" value=\"";
-    settings.getntpServer(location, sizeof(location));
-    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
-    message += "<br><br><input type=\"hidden\" name=\"ntp_old\" value=\"";
-    settings.getntpServer(location, sizeof(location));
-    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
-    message +="<br><br>";
+    message += "</select> Pixels.</td></tr>";
 
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
     
-    message += "Second: <select name=\"colsec\">";
+    message += "<tr><td>NTP:</td><td><input type=\"text\" size=\"20\" name=\"ntp\" value=\"";
+    settings.getntpServer(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
+    message += "<input type=\"hidden\" name=\"ntp_old\" value=\"";
+    settings.getntpServer(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
+    message +="<br></td></tr>";
+
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+    
+    message += "<tr><td>Second: </td><td><select name=\"colsec\">";
     uint8_t colorNum = settings.getColSec();
     for(uint8_t j = 0; j <= COLOR_COUNT; j++){
       message += "<option value=\"" +String(j) + "\"";
@@ -691,8 +696,8 @@ message += "<br>Help Dots after <select name=\"br\">";
       message += ">";
       message += String(FPSTR(sColorStr[j])) + "</option>";
     }
-    message += "</select>";
-    message += "<br>Minutes: <select name=\"colmin\">";
+    message += "</select></td></tr>";
+    message += "<tr><td>Minutes: </td><td><select name=\"colmin\">";
     colorNum = settings.getColMin();
     for(uint8_t j = 0; j <= COLOR_COUNT; j++){
       message += "<option value=\"" +String(j) + "\"";
@@ -700,8 +705,8 @@ message += "<br>Help Dots after <select name=\"br\">";
       message += ">";
       message += String(FPSTR(sColorStr[j])) + "</option>";
     }
-    message += "</select>";
-    message += "<br>Hour: <select name=\"colhour\">";
+    message += "</select></td></tr>";
+    message += "<tr><td>Hour: </td><td><select name=\"colhour\">";
     colorNum = settings.getColHou();
     for(uint8_t j = 0; j <= COLOR_COUNT; j++){
       message += "<option value=\"" +String(j) + "\"";
@@ -709,9 +714,9 @@ message += "<br>Help Dots after <select name=\"br\">";
       message += ">";
       message += String(FPSTR(sColorStr[j])) + "</option>";
     }
-    message += "</select>";
+    message += "</select></td></tr>";
 
-     message += "<br>Help Dots: <select name=\"colhel\">";
+     message += "<tr><td>Help Dots:</td><td> <select name=\"colhel\">";
     colorNum = settings.getColHel();
     for(uint8_t j = 0; j <= COLOR_COUNT; j++){
       message += "<option value=\"" +String(j) + "\"";
@@ -719,7 +724,7 @@ message += "<br>Help Dots after <select name=\"br\">";
       message += ">";
       message += String(FPSTR(sColorStr[j])) + "</option>";
     }
-    message += "</select>";
+    message += "</select></td></tr></table>";
     message += "<br><br><button title=\"Save Settings.\"><i class=\"fa fa-check\"></i></button>";
   message += "</form>";
   
