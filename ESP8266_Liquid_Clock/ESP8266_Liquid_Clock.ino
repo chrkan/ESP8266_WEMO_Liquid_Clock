@@ -624,18 +624,18 @@ String htmlTop(String page)
   //message += "<meta http-equiv=\"refresh\" content=\"60\" charset=\"UTF-8\">";
   message += "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css\">";
   message += "<style>";
-  message += "body{background-color:#53bbf4;text-align:center;color:#333333;font-family:Sans-serif;font-size:16px;}";
+  message += "body{text-align:center;color:#333333;font-family:Sans-serif;font-size:16px;}";
   message += "button{background-color:#FFFFFF;text-align:center;color:#53bbf4;width:50px;padding:10px;border:5px solid #FFFFFF;font-size:24px;border-radius:10px;}";
   
   message += "</style>";
   message += "</head>";
   message += "<body style=\"height: 100%;\">";
    message += "<span style=\"color:white\">";
-  message += "<table style=\"height: 100%; ; margin-left: auto; margin-right: auto; width: 300px;\"><tbody><tr><td style=\"height: 10%;\">";
-  message += "<button onclick=\"window.location.href='/'\"><i class=\"fa fa-home\"></i></button> ";
-  message += "<button onclick=\"window.location.href='/reset'\"><i class=\"fa fa-refresh\"></i></button> ";
-  message += "<button onclick=\"window.location.href='/Settings'\"><i class=\"fa fa-wrench\"></i></button> ";
-   message += "<button onclick=\"window.location.href='/updates'\"><i class=\"fa fa-upload\"></i></button> ";
+  message += "<table style=\"height: 100%; ; margin-left: auto; margin-right: auto; width: 300px; background-color: #53bbf4;\"><tbody><tr><td style=\"height: 10%;\">";
+  message += "&nbsp;&nbsp;<button onclick=\"window.location.href='/'\"><i class=\"fa fa-home\"></i></button>&nbsp;&nbsp; ";
+  message += "<button onclick=\"window.location.href='/reset'\"><i class=\"fa fa-refresh\"></i></button>&nbsp;&nbsp;";
+  message += "<button onclick=\"window.location.href='/Settings'\"><i class=\"fa fa-wrench\"></i></button>&nbsp;&nbsp; ";
+   message += "<button onclick=\"window.location.href='/update'\"><i class=\"fa fa-upload\"></i></button> &nbsp;&nbsp;";
    message +="</td></tr><tr><td style=\"height: 80%; vertical-align: top;\">";
   
   return message;
@@ -701,13 +701,15 @@ void handleRoot()
   message += String(ldr.value()) + "  %(min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
   message += "<br>Help Dots every: "+String(settings.getldrDot())+" Pixels, by "+String(settings.getBrightness())+"% Brightness." ;
   message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
-
+/**
   if (updateInfo > String(FirmewareVersion))
   {
     message += "<br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
   }else{
      message += "<br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
   }
+
+  **/
   message += "<br><br>Setting Version: "+String(settings.getSettingVersion());
   
   message += htmlButton();
