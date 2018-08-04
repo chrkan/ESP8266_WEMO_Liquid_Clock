@@ -20,6 +20,18 @@
 
 
 #define DEBUG
+
+#define FirmewareVersion  "0"
+
+#define UPDATE_SERVER "ota.christian-kany.de"
+#define UPDATE_INFOFILE "/version.json"
+#define UPDATE_FILE "/bin/ESP8266_Liquid_Clock.bin"
+
+
+
+#define SETTINGS_MAGIC_NUMBER 0x03
+#define SETTINGS_SettingVersion 0
+
 /* ------------------ Colors --------------------- */
   #define DEFAULT_Second 1
   #define DEFAULT_Minute 17
@@ -122,6 +134,11 @@
   #define DEFAULT_LDR_LED 15
   #define DEFAULT_LDR_Brightness 50
   
+//#define SYSLOGSERVER
+//------------------
+#define SYSLOGSERVER_SERVER "192.168.0.1"
+#define SYSLOGSERVER_PORT 514
+
 
 #endif
 

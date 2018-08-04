@@ -2,12 +2,15 @@
  *  Liquid Clock WEMO 
  * 
  *  bassierend auf der Liquid Clock von Christian Aschoff
- * 
- * 
+ *  Board: Wemos D1 R2 & Mini
+ *  Flashsize 4M (3M SPIFFS)
  * 
  * */
 #include <ArduinoOTA.h>
-      
+#include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>    
+#include <ArduinoJson.h>
+#include <ArduinoHttpClient.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
@@ -24,37 +27,56 @@
 #include "Timezones.h"
 #include "Colors.h"
 
+
+/******************************************************************************
+  Init.
+******************************************************************************/
+
 Settings settings;
 // ------------------ Pixel Einstellungen ---------------------
 
 #define NUM_PIXEL      60       // Anzahl der NeoPixel LEDs
 #define STRIP_PIN            2        // Digital  ESP8266
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXEL, STRIP_PIN, NEO_GRB + NEO_KHZ800);
+
+// ------------------ LDR Einstellungen ---------------------
 #define LDR_SIGNAL A0
-IPAddress myIP = { 0,0,0,0 };
+
 // Der lichtabhaengige Widerstand
 LDR ldr(LDR_SIGNAL);
+#define LOG Serial.print
 
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXEL, STRIP_PIN, NEO_GRB + NEO_KHZ800);
+
+// ------------------ Globale Variablen ---------------------
 // Die gelesene Zeit...
 int hours, minutes, seconds;
 bool startled;
+String updateInfo="0";
 char location[LEN_LOC_STR];
 unsigned long second_befor, milli_befor;
-// Hilfsvariablen fuer den organischen Effekt...
 
+// ------------------ Syslog Einstellungen ---------------------
+#ifdef SYSLOGSERVER
+WiFiUDP wifiUdp;
+Syslog syslog(wifiUdp, SYSLOGSERVER_SERVER, SYSLOGSERVER_PORT, HOSTNAME, "QLOCKWORK2", LOG_INFO);
+#endif
+
+// ------------------ Web Einstellungen ---------------------
 ESP8266WebServer esp8266WebServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 
 
- /* ------------------ Setup --------------------- */
+/******************************************************************************
+  Setup
+******************************************************************************/
 
 void setup() {
 
 startled =true;
 
   Serial.begin(115200);
-  
+  Serial.setDebugOutput(true);
   Serial.print("Neo-Pixel-Liquid-Clock-WEMOS"); 
   strip.begin();
   strip.setBrightness(254);
@@ -66,8 +88,7 @@ startled =true;
 wlan(true);
   if (WiFi.status() == WL_CONNECTED)
   {
-   setupWebServer();
-    
+
 
 
 /* ------------------ OTA --------------------- */
@@ -114,9 +135,12 @@ getntp();
 }
 //setze milli 
 milli_befor = millis();
+setupWebServer();
 }
 
- /* ------------------ loop --------------------- */
+/******************************************************************************
+  Loop.
+******************************************************************************/
 
 void loop() {
   long milli =0;
@@ -140,7 +164,7 @@ milli = millis() - milli_befor;
 
   clearStrip();
 /* ------------------ NTP --------------------- */
-if((minute() == 0|| minute() == 5 || minute() == 10 || minute() == 15|| minute() == 20|| minute() == 25|| minute() == 30 || minute() == 35|| minute() == 35|| minute() == 40|| minute() == 45|| minute() == 50|| minute() == 55) && second() == 0)
+if((minute() == 0) && second() == 0 && milli == 0)  //|| minute() == 5 || minute() == 10 || minute() == 15|| minute() == 20|| minute() == 25|| minute() == 30 || minute() == 35|| minute() == 35|| minute() == 40|| minute() == 45|| minute() == 50|| minute() == 55
 {
   
 wlan(true);
@@ -445,7 +469,7 @@ void wlan(bool an){
           WiFi.mode(WIFI_AP);
           Serial.println("No WLAN connected. Staying in AP mode.");
           delay(1000);
-          myIP = WiFi.softAPIP();
+     
               if(startled){
                 startShow(1); //red
               }
@@ -456,10 +480,11 @@ void wlan(bool an){
             WiFi.mode(WIFI_STA);
             Serial.println("WLAN connected. Switching to STA mode.");
             delay(1000);
-            myIP = WiFi.localIP();
+          
             clearStrip();
               if(startled){
             startShow(2);  // Green
+         
               }
             // mDNS is needed to see HOSTNAME in Arduino IDE.
             Serial.println("Starting mDNS responder.");
@@ -481,28 +506,118 @@ void wlan(bool an){
 /* ------------------ Wifi Ende--------------------- */
   
 }
+
+/******************************************************************************
+  Get update info.
+******************************************************************************/
+
+void getUpdateInfo()
+{
+
+  Serial.println("Sending HTTP-request for update info.");
+
+  char server[] = UPDATE_SERVER;
+  WiFiClient wifiClient;
+  HttpClient client = HttpClient(wifiClient, server, 80);
+  client.get(UPDATE_INFOFILE);
+  uint16_t statusCode = client.responseStatusCode();
+  if (statusCode == 200)
+  {
+    String response = client.responseBody();
+    response = response.substring(response.indexOf('{'), response.lastIndexOf('}') + 1);
+
+    Serial.printf("Status: %u\r\n", statusCode);
+    Serial.printf("Response is %u bytes.\r\n", response.length());
+    Serial.println(response);
+    Serial.println("Parsing JSON.");
+
+    //DynamicJsonBuffer jsonBuffer;
+    StaticJsonBuffer<256> jsonBuffer;
+    JsonObject &responseJson = jsonBuffer.parseObject(response);
+    if (responseJson.success())
+    {
+
+      updateInfo = responseJson["channel"]["stable"]["version"].as<String>();
+
+
+     // updateInfo = responseJson["channel"]["unstable"]["version"].as<String>();
+
+      return;
+  }
+}
+
+  else Serial.printf("Status: %u\r\n", statusCode);
+  Serial.println("Error (" + String(UPDATE_SERVER) + ")");
+
+}
+
+/******************************************************************************
+  Do Update
+******************************************************************************/
+
+void doupdate() {
+    wlan(false);
+    for(uint8_t t = 4; t > 0; t--) {
+        Serial.printf("[SETUP] WAIT %d...\n", t);
+        Serial.flush();
+        delay(1000);
+    }
+    
+    wlan(true);
+    startShow(10); //orange
+    // wait for WiFi connection
+    if(WiFi.status() == WL_CONNECTED) {
+        
+        
+        
+        t_httpUpdate_return ret = ESPhttpUpdate.update(String(UPDATE_SERVER) + String(UPDATE_FILE) );
+
+        switch(ret) {
+            case HTTP_UPDATE_FAILED:
+                Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+                startShow(1); //red
+                break;
+
+            case HTTP_UPDATE_NO_UPDATES:
+                Serial.println("HTTP_UPDATE_NO_UPDATES");
+                startShow(1); //red
+                break;
+
+            case HTTP_UPDATE_OK:
+                Serial.println("HTTP_UPDATE_OK");
+               startShow(2); //red
+                break;
+        }
+    }
+}
+
+
 /* ------------------ Webserver--------------------- */
 
 
 void setupWebServer()
 {
+  Serial.println("Starte WebServer...");
   esp8266WebServer.onNotFound(handleNotFound);
   esp8266WebServer.on("/", handleRoot);
 
   esp8266WebServer.on("/factoryReset", handleFactoryReset);
-   
+  esp8266WebServer.on("/updates", handleupdates); 
   esp8266WebServer.on("/Settings", handleSettings);
   esp8266WebServer.on("/commitSettings", []() {handleCommitSettings();});//; callBack();});
   
   esp8266WebServer.on("/wifiReset", handleWiFiReset);
   esp8266WebServer.on("/reset", handleReset);
+  
   esp8266WebServer.begin();
+  Serial.print("gestarte!!");
 }
 
 String htmlTop(String page)
 {
+  Serial.print("Starte WebServer: "+ page);
   String message = "<!doctype html>";
-  message += "<html>";
+  message += "<html style=\"height: 100%;\">";
   message += "<head>";
   message += "<title>" + String(HOSTNAME) + "-" +page +"</title>";
   message += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">";
@@ -514,18 +629,27 @@ String htmlTop(String page)
   
   message += "</style>";
   message += "</head>";
-  message += "<body>";
-  message += "<button onclick=\"window.location.href='/'\"><i class=\"fa fa-home\"></i></button> ";
-  message += "<button onclick=\"window.location.href='/reset'\"><i class=\"fa fa-power-off\"></i></button> ";
-  message += "<button onclick=\"window.location.href='/Settings'\"><i class=\"fa fa-gear\"></i></button> ";
+  message += "<body style=\"height: 100%;\">";
    message += "<span style=\"color:white\">";
+  message += "<table style=\"height: 100%; ; margin-left: auto; margin-right: auto; width: 300px;\"><tbody><tr><td style=\"height: 10%;\">";
+  message += "<button onclick=\"window.location.href='/'\"><i class=\"fa fa-home\"></i></button> ";
+  message += "<button onclick=\"window.location.href='/reset'\"><i class=\"fa fa-refresh\"></i></button> ";
+  message += "<button onclick=\"window.location.href='/Settings'\"><i class=\"fa fa-wrench\"></i></button> ";
+   message += "<button onclick=\"window.location.href='/updates'\"><i class=\"fa fa-upload\"></i></button> ";
+   message +="</td></tr><tr><td style=\"height: 80%; vertical-align: top;\">";
+  
   return message;
 }
 
 
 String htmlButton()
 {
-  String message = "</span>";
+  String message = "</td></tr><tr><td  style=\"height: 10%;\">";
+ message += "________________________________<br>";
+  message += "ckany 2018<br>";
+  
+  message+="</td></tr></tbody></table>     ";
+  message += "</span>";
   message += "</body>";
   message += "</html>";
   return message;
@@ -548,14 +672,14 @@ void handleNotFound()
 
 
 void handleRoot()
-{
+{getUpdateInfo();
   //Handler for the rooth path
  
     String message = htmlTop("Home");
 
   WiFiManager wifiManager;
   message += "<br><br>Wlan: " + WiFi.SSID();
-  
+  message += "<br>"+WiFi.localIP();
   time_t tempEspTime = now();
   message += "<br><br>Time: " + String(hour(tempEspTime)) + ":";
   if (minute(tempEspTime) < 10) message += "0";
@@ -578,13 +702,25 @@ void handleRoot()
   message += "<br>Help Dots every: "+String(settings.getldrDot())+" Pixels, by "+String(settings.getBrightness())+"% Brightness." ;
   message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
 
-
+  if (updateInfo > String(FirmewareVersion))
+  {
+    message += "<br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
+  }else{
+     message += "<br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
+  }
   message += "<br><br>Setting Version: "+String(settings.getSettingVersion());
   
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);
   
  
+}
+
+void handleupdates()
+{
+
+ doupdate();
+
 }
 
 void handleCommitSettings()
