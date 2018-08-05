@@ -9,8 +9,8 @@
 #include <EEPROM.h>
 #include "Configuration.h"
 
-#define SETTINGS_MAGIC_NUMBER 0x03
-#define SETTINGS_SettingVersion 0
+
+
 
 #define LEN_LOC_STR 100
 
@@ -51,6 +51,10 @@ public:
    int16_t getColHel();
   void setColHel(int16_t ColHel);
 
+    boolean getUpdateStable();
+  void setUpdateStable(bool set);
+  void toggleUpdateStable();
+
 private:
   struct MySettings {
     uint8_t magicNumber;
@@ -63,6 +67,7 @@ private:
     int16_t ColMin;
     int16_t ColHou;
     int16_t ColHel;
+    boolean UpdateStable;
     
   } mySettings;
 

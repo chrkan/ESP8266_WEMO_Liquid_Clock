@@ -22,8 +22,8 @@ void Settings::toggleUseLdr() {
 }
 
 void Settings::setntpServer(char text[], int size) {
- int tmp = sizeof(mySettings.ntpServer);
-  memcpy(mySettings.ntpServer, text, min(tmp,size));
+  int tmp = sizeof(mySettings.ntpServer);
+  memcpy(mySettings.ntpServer, text, min(tmp, size));
 }
 
 char* Settings::getntpServer(char* ntpServer, int size) {
@@ -85,25 +85,32 @@ int16_t Settings::getColHel() {
 void Settings::setColHel(int16_t ColHel) {
   mySettings.ColHel = ColHel;
 }
+boolean Settings::getUpdateStable() {
+  return mySettings.UpdateStable;
+}
+void Settings::setUpdateStable(bool set) {
+  mySettings.UpdateStable = set;
+}
 
 
 
 // Set all defaults.
 void Settings::resetToDefault() {
   Serial.println("*** Settings set to defaults in EEPROM. ***");
-  
+
   mySettings.magicNumber = SETTINGS_MAGIC_NUMBER;
   mySettings.SettingVersion = SETTINGS_SettingVersion;
   mySettings.useLdr = DEFAULT_LDR_Status;
   char charntp[50] = DEFAULT_NTP_SERVER;
   int tmp = sizeof(mySettings.ntpServer);
-  memcpy(mySettings.ntpServer, charntp, min(tmp,50));
+  memcpy(mySettings.ntpServer, charntp, min(tmp, 50));
   mySettings.ldrDot = DEFAULT_LDR_LED;
   mySettings.brightness = DEFAULT_LDR_Brightness;
   mySettings.ColSec = DEFAULT_Second;
   mySettings.ColMin = DEFAULT_Minute;
   mySettings.ColHou = DEFAULT_Hour;
   mySettings.ColHel = DEFAULT_Help_Dot;
+  mySettings.UpdateStable = UPDATE_Stable;
   saveToEEPROM();
 }
 
@@ -112,7 +119,7 @@ void Settings::loadFromEEPROM() {
   Serial.println("Settings loaded from EEPROM.");
   EEPROM.begin(512);
   EEPROM.get(0, mySettings);
-  if ((mySettings.magicNumber != SETTINGS_MAGIC_NUMBER) ||(mySettings.SettingVersion == SETTINGS_SettingVersion))
+  if ((mySettings.magicNumber != SETTINGS_MAGIC_NUMBER) || (mySettings.SettingVersion == SETTINGS_SettingVersion))
     resetToDefault();
   EEPROM.end();
 }

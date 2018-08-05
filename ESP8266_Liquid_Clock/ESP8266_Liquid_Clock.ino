@@ -766,7 +766,7 @@ void handleRoot()
   {
     message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
   }else{
-     message += "<br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
+     message += "<br><br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
   }
 
   
@@ -788,45 +788,49 @@ void handleupdates()
 void handleCommitSettings()
 {
 startShow(2); //Green
+String message = htmlTop("Home");
 
 
-String message = htmlTop("CommitSettings");
-message += "<br><br>"+esp8266WebServer.arg("ntpserver");
 
-message += "<br>Help Dots: ";
-if(esp8266WebServer.arg("DEFAULT_LDR_Status") == "1")
-{
-  message += "true";
+if(esp8266WebServer.arg("DEFAULT_LDR_Status") == "1") 
+{ 
   settings.setUseLdr(true);
 }else{
-  message += "false";
+  
   settings.setUseLdr(false);
 }
 
 settings.setBrightness(esp8266WebServer.arg("br").toInt());
- 
-message += "<br>Brightness: "+esp8266WebServer.arg("br") +" %";
 
-message += "<br>Help Dots every "+esp8266WebServer.arg("ldrdots") +" Pixel";
 settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
 
   char text[LEN_LOC_STR];
   memset(text, 0, sizeof(text));
   esp8266WebServer.arg("ntp").toCharArray(text, sizeof(text), 0);
   settings.setntpServer(text, sizeof(text));
-  message +="<br><br>NTP Server: "+esp8266WebServer.arg("ntp");
 
   settings.setColSec(esp8266WebServer.arg("colsec").toInt());
   settings.setColMin(esp8266WebServer.arg("colmin").toInt());
   settings.setColHou(esp8266WebServer.arg("colhour").toInt());
   settings.setColHel(esp8266WebServer.arg("colhel").toInt());
 
+  if(esp8266WebServer.arg("UpdateStable") == "1") 
+{ 
+  settings.setUpdateStable(true);
+}else{
   
+  settings.setUpdateStable(false);
+}
+
+  message += settingshtml();
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);  
   delay(500);
   settings.saveToEEPROM();
-
+  if(esp8266WebServer.arg("UpdateStable") != esp8266WebServer.arg("UpdateStable_old"))
+  {
+    //handleReset();
+  }
 
   if(esp8266WebServer.arg("ntp") != esp8266WebServer.arg("ntp_old"))
   {
@@ -835,14 +839,9 @@ settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
 
   
 }
-
-
-void handleSettings()
+String settingshtml()
 {
-  //Handler for the rooth path
- 
-    String message = htmlTop("Settings");
-    message += "<form action=\"/commitSettings\">";
+String message = "<form action=\"/commitSettings\">";
     
     message += "<br><br><table align=\"center\"><tr><th>";
   
@@ -922,9 +921,39 @@ message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
       message += ">";
       message += String(FPSTR(sColorStr[j])) + "</option>";
     }
-    message += "</select></td></tr></table>";
+    message += "</select></td></tr>";
+
+  message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+
+  message += "<tr><th>Update: </th><th><input type=\"radio\" name=\"UpdateStable\" value=\"1\"";
+    if (settings.getUpdateStable()) message += " checked";
+    message += "> Stable ";
+
+    message += "<input type=\"hidden\" name=\"UpdateStable_old\" value=\"";
+    message += String(settings.getUpdateStable());
+    message += "\" placeholder=\"Enter NTP Server ...\">";
+    
+    message += " <br><input type=\"radio\" name=\"UpdateStable\" value=\"0\"";
+    if (!settings.getUpdateStable()) message += " checked";
+    message += "> Unstable</th></tr>";
+
+    
+
+    
+    message += "</table>";
     message += "<br><br><button title=\"Save Settings.\"><i class=\"fa fa-check\"></i></button>";
   message += "</form>";
+  return message;
+  
+}
+
+void handleSettings()
+{
+  //Handler for the rooth path
+ 
+    String message = htmlTop("Settings");
+
+    message +=settingshtml();
   
     message += htmlButton();
 

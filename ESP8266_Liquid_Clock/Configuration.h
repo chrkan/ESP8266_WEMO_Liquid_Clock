@@ -21,15 +21,18 @@
 
 #define DEBUG
 
-#define FirmewareVersion  "0"
+#define FirmewareVersion  "20180805"
 
-#define UPDATE_SERVER "ota.christian-kany.de"
-#define UPDATE_INFOFILE "/version.json"
-#define UPDATE_FILE "/bin/ESP8266_Liquid_Clock.bin"
+#define UPDATE_Stable true
+#define UPDATE_SERVER "raw.githubusercontent.com"
+#define UPDATE_INFOFILE "/chrkan/ESP8266_WEMO_Liquid_Clock/master/update/version.json"
+#define UPDATE_FILE     "/chrkan/ESP8266_WEMO_Liquid_Clock/master/update/ESP8266_Liquid_Clock.ino.d1_mini.bin"
+#define fingerprint "CC AA 48 48 66 46 0E 91 53 2C 9C 7C 23 2A B1 74 4D 29 9D 33"
 
 
 
-#define SETTINGS_MAGIC_NUMBER 0x03
+
+#define SETTINGS_MAGIC_NUMBER 0x04
 #define SETTINGS_SettingVersion 0
 
 /* ------------------ Colors --------------------- */
@@ -134,9 +137,9 @@
   #define DEFAULT_LDR_LED 15
   #define DEFAULT_LDR_Brightness 50
   
-//#define SYSLOGSERVER
+#define SYSLOGSERVER
 //------------------
-#define SYSLOGSERVER_SERVER "192.168.0.1"
+#define SYSLOGSERVER_SERVER "192.168.178.99"
 #define SYSLOGSERVER_PORT 514
 
 
