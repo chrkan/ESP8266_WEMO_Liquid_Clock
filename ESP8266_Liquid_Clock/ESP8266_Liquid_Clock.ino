@@ -7,15 +7,17 @@
  * 
  * */
 #include <ArduinoOTA.h>
-#include <ESP8266HTTPClient.h>
+
+#include <WiFiClientSecure.h> //https://github.com/esp8266/Arduino/blob/4897e0006b5b0123a2fa31f67b14a3fff65ce561/doc/esp8266wifi/client-secure-examples.md
 #include <ESP8266httpUpdate.h>    
 #include <ArduinoJson.h>
-#include <ArduinoHttpClient.h>
+
+#include <FS.h>
+#include "ESP8266httpUpdate.h"
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>   
-#include <ArduinoOTA.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <Adafruit_NeoPixel.h>
 #include <Syslog.h>
@@ -130,11 +132,15 @@ getntp();
   delay(250);
   startled = false;
 
-
+#ifdef SYSLOGSERVER
+    Serial.println("Starting syslog.");
+    syslog.log(LOG_INFO, ";#;dateTime;roomTemperature;roomHumidity;outdoorTemperature;outdoorHumidity;outdoorCode;ldrValue;errorCounterNtp;errorCounterDht;errorCounterYahoo;freeHeapSize;upTime");
+#endif
   
 }
 //setze milli 
 milli_befor = millis();
+getUpdateInfo();
 setupWebServer();
 }
 
@@ -171,6 +177,8 @@ wlan(true);
 
 
 getntp();
+
+getUpdateInfo();
  }
 /* ------------------ NTP ENDE--------------------- */
 
@@ -513,41 +521,85 @@ void wlan(bool an){
 
 void getUpdateInfo()
 {
+//https://github.com/esp8266/Arduino/blob/4897e0006b5b0123a2fa31f67b14a3fff65ce561/doc/esp8266wifi/client-secure-examples.md
+  // Use WiFiClientSecure class to create TLS connection
+  WiFiClientSecure client;
+  Serial.print("connecting to ");
+  Serial.println(UPDATE_SERVER);
+  if (!client.connect(UPDATE_SERVER, 443)) {
+    Serial.println("connection failed");
+    return;
+  }
 
-  Serial.println("Sending HTTP-request for update info.");
+  if (client.verify(fingerprint, UPDATE_SERVER)) {
+    Serial.println("certificate matches");
+  } else {
+    Serial.println("certificate doesn't match");
+  }
 
-  char server[] = UPDATE_SERVER;
-  WiFiClient wifiClient;
-  HttpClient client = HttpClient(wifiClient, server, 80);
-  client.get(UPDATE_INFOFILE);
-  uint16_t statusCode = client.responseStatusCode();
-  if (statusCode == 200)
-  {
-    String response = client.responseBody();
-    response = response.substring(response.indexOf('{'), response.lastIndexOf('}') + 1);
+  Serial.print("requesting URL: ");
+  Serial.println(UPDATE_INFOFILE);
 
-    Serial.printf("Status: %u\r\n", statusCode);
-    Serial.printf("Response is %u bytes.\r\n", response.length());
-    Serial.println(response);
+  client.print(String("GET ") + UPDATE_INFOFILE + " HTTP/1.1\r\n" +
+               "Host: " + UPDATE_SERVER + "\r\n" +
+               "User-Agent: ESP8266_Relay01\r\n" +
+               "Connection: close\r\n\r\n");
+
+  Serial.println("request sent");
+  //read Header
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    Serial.println(line); //debug
+    if (line == "\r") {
+      Serial.println("headers received");
+      break;
+    }
+  }
+  //read content
+  Serial.println("-------read content -------------------------------");
+  
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    if (line != "\r") {
+    line = line.substring(line.indexOf('{'), line.lastIndexOf('}') + 1);
+
+    //Serial.printf("Status: %u\r\n", statusCode);
+    Serial.printf("Response is %u bytes.\r\n", line.length());
+    Serial.println(line);
     Serial.println("Parsing JSON.");
 
     //DynamicJsonBuffer jsonBuffer;
     StaticJsonBuffer<256> jsonBuffer;
-    JsonObject &responseJson = jsonBuffer.parseObject(response);
+    JsonObject &responseJson = jsonBuffer.parseObject(line);
     if (responseJson.success())
     {
+  #ifdef UPDATE_Stable
+  updateInfo = responseJson["channel"]["stable"]["version"].as<String>();
+  #else
+    updateInfo = responseJson["channel"]["unstable"]["version"].as<String>();
+  
+  #endif
+      
 
-      updateInfo = responseJson["channel"]["stable"]["version"].as<String>();
-
-
-     // updateInfo = responseJson["channel"]["unstable"]["version"].as<String>();
-
+     
       return;
-  }
+     }
+     Serial.println(updateInfo);
+
+      
+    }
+    else {
+      Serial.println("fertig!");
+      break;
+    }
+
+    
+    
 }
 
-  else Serial.printf("Status: %u\r\n", statusCode);
-  Serial.println("Error (" + String(UPDATE_SERVER) + ")");
+
+///  else Serial.printf("Status: %u\r\n", statusCode);
+ // Serial.println("Error (" + String(UPDATE_SERVER) + ")");
 
 }
 
@@ -556,6 +608,8 @@ void getUpdateInfo()
 ******************************************************************************/
 
 void doupdate() {
+
+  
     wlan(false);
     for(uint8_t t = 4; t > 0; t--) {
         Serial.printf("[SETUP] WAIT %d...\n", t);
@@ -568,26 +622,32 @@ void doupdate() {
     // wait for WiFi connection
     if(WiFi.status() == WL_CONNECTED) {
         
-        
-        
-        t_httpUpdate_return ret = ESPhttpUpdate.update(String(UPDATE_SERVER) + String(UPDATE_FILE) );
-
-        switch(ret) {
-            case HTTP_UPDATE_FAILED:
-                Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-                startShow(1); //red
-                break;
-
-            case HTTP_UPDATE_NO_UPDATES:
-                Serial.println("HTTP_UPDATE_NO_UPDATES");
-                startShow(1); //red
-                break;
-
-            case HTTP_UPDATE_OK:
-                Serial.println("HTTP_UPDATE_OK");
-               startShow(2); //red
-                break;
-        }
+               // Use WiFiClientSecure class to create TLS connection
+                WiFiClientSecure client;
+                Serial.print("connecting to ");
+                Serial.println(UPDATE_SERVER);
+                if (!client.connect(UPDATE_SERVER, 443)) {
+                  Serial.println("connection failed");
+                  return;
+                }
+              
+                if (client.verify(fingerprint, UPDATE_SERVER)) {
+                  Serial.println("certificate matches");
+                } else {
+                  Serial.println("certificate doesn't match");
+                  return;
+                }
+              
+                Serial.print("Starting OTA from: ");
+                Serial.println(UPDATE_SERVER + String(UPDATE_FILE));
+                t_httpUpdate_return ret = ESPhttpUpdate.update("https://"+String(UPDATE_SERVER)+String(UPDATE_FILE),String(""),String(fingerprint));
+               
+                // if successful, ESP will restart
+                
+                Serial.println("update failed");
+                Serial.println((int) ret);
+                
+    
     }
 }
 
@@ -672,14 +732,14 @@ void handleNotFound()
 
 
 void handleRoot()
-{getUpdateInfo();
+{
   //Handler for the rooth path
  
     String message = htmlTop("Home");
 
   WiFiManager wifiManager;
-  message += "<br><br>Wlan: " + WiFi.SSID();
-  message += "<br>"+WiFi.localIP();
+  message += "<br><br>Wlan: " + WiFi.SSID()+"<br>";
+  //message += "<br>"+WiFi.localIP();
   time_t tempEspTime = now();
   message += "<br><br>Time: " + String(hour(tempEspTime)) + ":";
   if (minute(tempEspTime) < 10) message += "0";
@@ -701,15 +761,15 @@ void handleRoot()
   message += String(ldr.value()) + "  %(min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
   message += "<br>Help Dots every: "+String(settings.getldrDot())+" Pixels, by "+String(settings.getBrightness())+"% Brightness." ;
   message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
-/**
+
   if (updateInfo > String(FirmewareVersion))
   {
-    message += "<br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
+    message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
   }else{
      message += "<br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
   }
 
-  **/
+  
   message += "<br><br>Setting Version: "+String(settings.getSettingVersion());
   
   message += htmlButton();
