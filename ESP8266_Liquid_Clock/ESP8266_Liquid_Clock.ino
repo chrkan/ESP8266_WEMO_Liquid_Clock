@@ -573,12 +573,15 @@ void getUpdateInfo()
     JsonObject &responseJson = jsonBuffer.parseObject(line);
     if (responseJson.success())
     {
-  #ifdef UPDATE_Stable
+      
+  if(settings.getUpdateStable())
+  {
+    Serial.println("Stable Version");
   updateInfo = responseJson["channel"]["stable"]["version"].as<String>();
-  #else
+  }else{
     updateInfo = responseJson["channel"]["unstable"]["version"].as<String>();
-  
-  #endif
+  Serial.println("Unstable Version");
+  }
       
 
      
@@ -764,7 +767,12 @@ void handleRoot()
 
   if (updateInfo > String(FirmewareVersion))
   {
-    message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
+    if(settings.getUpdateStable())
+      {
+        message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
+      }else{
+        message += "<br><br><span style=\"color:red;\"><a href=\"/update\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
+      }
   }else{
      message += "<br><br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
   }
@@ -829,7 +837,7 @@ settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
   settings.saveToEEPROM();
   if(esp8266WebServer.arg("UpdateStable") != esp8266WebServer.arg("UpdateStable_old"))
   {
-    //handleReset();
+    getUpdateInfo();
   }
 
   if(esp8266WebServer.arg("ntp") != esp8266WebServer.arg("ntp_old"))
