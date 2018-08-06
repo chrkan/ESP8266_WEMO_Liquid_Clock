@@ -6,28 +6,31 @@
  *  Flashsize 4M (3M SPIFFS)
  * 
  * */
-#include <ArduinoOTA.h>
 
-#include <WiFiClientSecure.h> //https://github.com/esp8266/Arduino/blob/4897e0006b5b0123a2fa31f67b14a3fff65ce561/doc/esp8266wifi/client-secure-examples.md
-#include <ESP8266httpUpdate.h>    
 #include <ArduinoJson.h>
+#include <ArduinoOTA.h>
+#include <Adafruit_NeoPixel.h>
 
-#include <FS.h>
-#include "ESP8266httpUpdate.h"
+
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
+#include <ESP8266httpUpdate.h>    
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>   
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-#include <Adafruit_NeoPixel.h>
+
 #include <Syslog.h>
 #include <TimeLib.h>
 #include <Timezone.h>
-#include "Settings.h"
-#include "LDR.h"
-#include "Configuration.h"
-#include "Timezones.h"
+
+#include <WiFiClientSecure.h> //https://github.com/esp8266/Arduino/blob/4897e0006b5b0123a2fa31f67b14a3fff65ce561/doc/esp8266wifi/client-secure-examples.md
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+
 #include "Colors.h"
+#include "Configuration.h"
+#include "LDR.h"
+#include "Settings.h"
+#include "Timezones.h"
+
 
 
 /******************************************************************************
@@ -769,9 +772,9 @@ void handleRoot()
   {
     if(settings.getUpdateStable())
       {
-        message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
-      }else{
         message += "<br><br><span style=\"color:red;\"><a href=\"/update\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
+      }else{
+        message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
       }
   }else{
      message += "<br><br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
