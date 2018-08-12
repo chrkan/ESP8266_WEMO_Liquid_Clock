@@ -21,7 +21,13 @@
 
 #define DEBUG
 
-#define FirmewareVersion  "20180805"
+#define FirmewareVersion  "20180812"
+
+// ------------------ Pixel Einstellungen ---------------------
+
+#define NUM_PIXEL      60       // Anzahl der NeoPixel LEDs
+#define STRIP_PIN            2        // Digital  ESP8266
+
 
 #define UPDATE_Stable true
 #define UPDATE_SERVER "raw.githubusercontent.com"
@@ -122,6 +128,7 @@
  * Messwerte bekommt. Ohne AUTOSCALE werden die manuellen Min-/Max-Werte genommen.
  * Default: eingeschaltet.
  */
+
   #define LDR_SIGNAL A0
   #define LDR_AUTOSCALE
   #define LDR_MANUAL_MIN 0

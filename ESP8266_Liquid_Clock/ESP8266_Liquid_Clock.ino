@@ -38,14 +38,10 @@
 ******************************************************************************/
 
 Settings settings;
-// ------------------ Pixel Einstellungen ---------------------
 
-#define NUM_PIXEL      60       // Anzahl der NeoPixel LEDs
-#define STRIP_PIN            2        // Digital  ESP8266
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXEL, STRIP_PIN, NEO_GRB + NEO_KHZ800);
 
-// ------------------ LDR Einstellungen ---------------------
-#define LDR_SIGNAL A0
+
 
 // Der lichtabhaengige Widerstand
 LDR ldr(LDR_SIGNAL);
@@ -89,7 +85,8 @@ startled =true;
   delay(200);
 
     
-  startShow(3); // Blue
+  //startShow(3); // Blue
+  leds (0, 15, strip.Color(0, 0, 255), 50);
 wlan(true);
   if (WiFi.status() == WL_CONNECTED)
   {
@@ -382,6 +379,18 @@ void theaterChaseRainbow(uint8_t wait) {
     }
   }
 }
+void leds (int startled, int leds, uint32_t c, int wait)
+{
+  int i=startled;
+while(i <= startled+leds) {
+  strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  i++;
+}
+  
+}
+
 
  /* ------------------ NTP --------------------- */
 
@@ -399,8 +408,8 @@ if (WiFi.status() == WL_CONNECTED)
 
     if(startled){
     // alle LEDs an...
-    clearStrip();
-    for(byte i=0; i<NUM_PIXEL; i++) {
+   // clearStrip();
+    for(byte i=30; i<NUM_PIXEL; i++) {
     strip.setPixelColor(i, wheel((256 / NUM_PIXEL) * i));
     strip.show();
     delay(50);
@@ -454,7 +463,8 @@ time_t getNtpTime(const char server[])
   }
   if (errorCounterNtp < 255) errorCounterNtp++;
 #ifdef DEBUG
-   startShow(1); //red
+   //startShow(1); //red
+   leds (30, 30, strip.Color(255, 0, 0) , 50);
   Serial.printf("Error (NTP): %u\r\n", errorCounterNtp);
 #endif
   return 0;
@@ -471,7 +481,7 @@ void wlan(bool an){
     WiFiManager wifiManager;
      if (WiFi.status() != WL_CONNECTED)
      {
-      clearStrip();
+      //clearStrip();
   wifiManager.setTimeout(WIFI_SETUP_TIMEOUT);
   wifiManager.autoConnect(HOSTNAME, WIFI_AP_PASS);
         if (WiFi.status() != WL_CONNECTED)
@@ -479,10 +489,12 @@ void wlan(bool an){
          
           WiFi.mode(WIFI_AP);
           Serial.println("No WLAN connected. Staying in AP mode.");
-          delay(1000);
+          //delay(1000);
      
               if(startled){
-                startShow(1); //red
+              // startShow(1); //red
+               
+               leds (15, 15, strip.Color(255, 0, 0) , 50);
               }
               
           }
@@ -490,12 +502,12 @@ void wlan(bool an){
           {
             WiFi.mode(WIFI_STA);
             Serial.println("WLAN connected. Switching to STA mode.");
-            delay(1000);
+            //delay(1000);
           
-            clearStrip();
+            //clearStrip();
               if(startled){
-            startShow(2);  // Green
-         
+            //startShow(2);  // Green
+         leds (15, 15, strip.Color(0, 255, 0), 50);
               }
             // mDNS is needed to see HOSTNAME in Arduino IDE.
             Serial.println("Starting mDNS responder.");
