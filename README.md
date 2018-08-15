@@ -7,17 +7,29 @@ Web Setup Idee von http://tmw-it.ch/qlockwork/
 
 
 ArduinoJson.h
+
 ArduinoOTA.h
+
 Adafruit_NeoPixel.h
+
 ESP8266HTTPUpdateServer.h
+
 ESP8266mDNS.h
+
 ESP8266httpUpdate.h    
+
 ESP8266WebServer.h
+
 ESP8266WiFi.h   
+
 Syslog.h
+
 TimeLib.h
+
 Timezone.h
+
 WiFiClientSecure.h //https://github.com/esp8266/Arduino/blob/4897e0006b5b0123a2fa31f67b14a3fff65ce561/doc/esp8266wifi/client-secure-examples.md
+
 WiFiManager.h          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
 ======================= Initial Setup =======================
