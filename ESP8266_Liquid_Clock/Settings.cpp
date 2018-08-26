@@ -92,7 +92,28 @@ void Settings::setUpdateStable(bool set) {
   mySettings.UpdateStable = set;
 }
 
+boolean Settings::getwlan() {
+  return mySettings.wlan;
+}
+void Settings::setwlan(bool set) {
+  mySettings.wlan = set;
+}
 
+time_t Settings::getNightOffTime() {
+  return mySettings.nightOffTime;
+}
+
+void Settings::setNightOffTime(time_t nightOffTime) {
+  mySettings.nightOffTime = nightOffTime;
+}
+
+time_t Settings::getDayOnTime() {
+  return mySettings.dayOnTime;
+}
+
+void Settings::setDayOnTime(time_t dayOnTime) {
+  mySettings.dayOnTime = dayOnTime;
+}
 
 // Set all defaults.
 void Settings::resetToDefault() {
@@ -111,6 +132,9 @@ void Settings::resetToDefault() {
   mySettings.ColHou = DEFAULT_Hour;
   mySettings.ColHel = DEFAULT_Help_Dot;
   mySettings.UpdateStable = UPDATE_Stable;
+  mySettings.wlan = DEFAULT_wlan;
+  mySettings.nightOffTime = 0;
+  mySettings.dayOnTime = 0;
   saveToEEPROM();
 }
 

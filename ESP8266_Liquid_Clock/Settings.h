@@ -51,9 +51,19 @@ public:
    int16_t getColHel();
   void setColHel(int16_t ColHel);
 
-    boolean getUpdateStable();
+  boolean getUpdateStable();
   void setUpdateStable(bool set);
   void toggleUpdateStable();
+
+  boolean getwlan();
+  void setwlan(bool set);
+  void togglewlan();
+
+  time_t getNightOffTime();
+  void setNightOffTime(time_t nightOffTime);
+
+  time_t getDayOnTime();
+  void setDayOnTime(time_t dayOnTime);
 
 private:
   struct MySettings {
@@ -68,7 +78,9 @@ private:
     int16_t ColHou;
     int16_t ColHel;
     boolean UpdateStable;
-    
+    boolean wlan;
+    time_t nightOffTime;
+    time_t dayOnTime;
   } mySettings;
 
   void loadFromEEPROM();

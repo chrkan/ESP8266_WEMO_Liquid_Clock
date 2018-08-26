@@ -1,6 +1,6 @@
 /**
  *  Liquid Clock WEMO 
- * 
+ * ESP8266
  *  bassierend auf der Liquid Clock von Christian Aschoff
  *  Board: Wemos D1 R2 & Mini
  *  Flashsize 4M (3M SPIFFS)
@@ -51,10 +51,11 @@ LDR ldr(LDR_SIGNAL);
 // ------------------ Globale Variablen ---------------------
 // Die gelesene Zeit...
 int hours, minutes, seconds;
-bool startled;
-String updateInfo="0";
+bool startled, abschaltung;
+String updateInfo="0", modus = "showleds";
 char location[LEN_LOC_STR];
 unsigned long second_befor, milli_befor;
+
 
 // ------------------ Syslog Einstellungen ---------------------
 #ifdef SYSLOGSERVER
@@ -75,18 +76,17 @@ ESP8266HTTPUpdateServer httpUpdater;
 void setup() {
 
 startled =true;
-
+abschaltung = false;
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.print("Neo-Pixel-Liquid-Clock-WEMOS"); 
   strip.begin();
   strip.setBrightness(254);
-  
-  delay(200);
+  leds (0, 15, strip.Color(127, 127, 127), 50);
 
     
-  //startShow(3); // Blue
-  leds (0, 15, strip.Color(0, 0, 255), 50);
+ 
+
 wlan(true);
   if (WiFi.status() == WL_CONNECTED)
   {
@@ -129,7 +129,7 @@ getntp();
 
   
   
-  delay(250);
+ 
   startled = false;
 
 #ifdef SYSLOGSERVER
@@ -179,8 +179,27 @@ wlan(true);
 getntp();
 
 getUpdateInfo();
+
+wlan(settings.getwlan());
  }
 /* ------------------ NTP ENDE--------------------- */
+
+    // Set nightmode/daymode.
+    if ((hour() == hour(settings.getNightOffTime())) && (minute() == minute(settings.getNightOffTime())))
+    {
+      
+    clearStrip();
+      modus = "blank";
+    }
+
+    if ( (hour() == hour(settings.getDayOnTime())) && (minute() == minute(settings.getDayOnTime())))
+    {
+      
+      
+      modus = "showleds";
+    }
+
+
 
   // Call HTTP- and OTA-handle.
   esp8266WebServer.handleClient();
@@ -196,18 +215,29 @@ getUpdateInfo();
     seconds = second();
     
    
-    int color = settings.getColHel();
-  // bei Dunkelheit kleine Hilfslichter einschalten...
-    if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
-      for(int i=0; i<60; i += settings.getldrDot()) {
-        strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
-      }
-    }
+  
 
 
  /* ------------------ led --------------------- */
   
-    // Positionen berechnen und ausgeben...
+   
+
+
+// nightmode/daymode.
+    if(modus == "showleds")
+    {
+  int color = settings.getColHel();
+  // bei Dunkelheit kleine Hilfslichter einschalten...
+    if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
+      for(int i=0; i<60; i += settings.getldrDot()) {
+        if(modus = "showleds")
+        {
+        strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+        }
+      }
+    }
+    
+       // Positionen berechnen und ausgeben...
    // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
    double doubleDisplaySeconds = (double) second() + (milli * 0.001);
    color = settings.getColSec();
@@ -220,8 +250,16 @@ getUpdateInfo();
     color = settings.getColHou();
     double doubleDisplayHours = doubleMap((double) (hours * 60.0 + minutes), 0.0, 12.0 * 60.0, 0.0, 60.0);
     setFloatPixelColor(doubleDisplayHours, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+    
     strip.show();
- 
+    }
+
+    if(modus == "blank")
+    {
+    startShow(0); //blank
+    clearStrip();
+    }
+  
 }
 
 
@@ -390,7 +428,7 @@ while(i <= startled+leds) {
 }
   
 }
-
+ 
 
  /* ------------------ NTP --------------------- */
 
@@ -409,7 +447,7 @@ if (WiFi.status() == WL_CONNECTED)
     if(startled){
     // alle LEDs an...
    // clearStrip();
-    for(byte i=30; i<NUM_PIXEL; i++) {
+    for(byte i=45; i<NUM_PIXEL; i++) {
     strip.setPixelColor(i, wheel((256 / NUM_PIXEL) * i));
     strip.show();
     delay(50);
@@ -464,7 +502,7 @@ time_t getNtpTime(const char server[])
   if (errorCounterNtp < 255) errorCounterNtp++;
 #ifdef DEBUG
    //startShow(1); //red
-   leds (30, 30, strip.Color(255, 0, 0) , 50);
+   leds (45, 15, strip.Color(255, 0, 0) , 50);
   Serial.printf("Error (NTP): %u\r\n", errorCounterNtp);
 #endif
   return 0;
@@ -481,20 +519,26 @@ void wlan(bool an){
     WiFiManager wifiManager;
      if (WiFi.status() != WL_CONNECTED)
      {
+      if(startled){
+        leds (15, 15, strip.Color(0, 0, 255), 50);
+      }
       //clearStrip();
   wifiManager.setTimeout(WIFI_SETUP_TIMEOUT);
   wifiManager.autoConnect(HOSTNAME, WIFI_AP_PASS);
+
+  
         if (WiFi.status() != WL_CONNECTED)
         {
          
           WiFi.mode(WIFI_AP);
           Serial.println("No WLAN connected. Staying in AP mode.");
-          //delay(1000);
+          
      
               if(startled){
-              // startShow(1); //red
+              startShow(3); //blue
                
-               leds (15, 15, strip.Color(255, 0, 0) , 50);
+               leds (15, 15, strip.Color(255, 0, 0) , 50);//red
+               leds (45, 15, strip.Color(255, 0, 0) , 50);//red
               }
               
           }
@@ -507,7 +551,7 @@ void wlan(bool an){
             //clearStrip();
               if(startled){
             //startShow(2);  // Green
-         leds (15, 15, strip.Color(0, 255, 0), 50);
+         leds (30, 15, strip.Color(0, 255, 0), 50);//green
               }
             // mDNS is needed to see HOSTNAME in Arduino IDE.
             Serial.println("Starting mDNS responder.");
@@ -628,7 +672,7 @@ void getUpdateInfo()
 void doupdate() {
 
   
-    wlan(false);
+    //wlan(false);
     for(uint8_t t = 4; t > 0; t--) {
         Serial.printf("[SETUP] WAIT %d...\n", t);
         Serial.flush();
@@ -745,7 +789,10 @@ void callBack()
 // Page 404.
 void handleNotFound()
 {
-  esp8266WebServer.send(404, "text/plain", "404 - File Not Found.");
+  String message = htmlTop("404");
+  message ="<br><br>404 - File Not Found.";
+  message += htmlButton();
+  esp8266WebServer.send(200, "text/html", message);
 }
 
 
@@ -784,9 +831,9 @@ void handleRoot()
   {
     if(settings.getUpdateStable())
       {
-        message += "<br><br><span style=\"color:red;\"><a href=\"/update\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
+        message += "<br><br><span style=\"color:red;\"><a href=\"/update\">Firmwareupdate available! (" + updateInfo + ")<br> Your Firmeware: "+ String(FirmewareVersion) +"</a></span>";
       }else{
-        message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")</a></span>";
+        message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")<br> Your Firmeware: "+ String(FirmewareVersion) +"</a></span>";
       }
   }else{
      message += "<br><br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
@@ -813,7 +860,13 @@ void handleCommitSettings()
 startShow(2); //Green
 String message = htmlTop("Home");
 
-
+if(esp8266WebServer.arg("Wlan") == "1") 
+{ 
+  settings.setwlan(true);
+}else{
+  
+  settings.setwlan(false);
+}
 
 if(esp8266WebServer.arg("DEFAULT_LDR_Status") == "1") 
 { 
@@ -845,6 +898,10 @@ settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
   settings.setUpdateStable(false);
 }
 
+  settings.setNightOffTime(esp8266WebServer.arg("no").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("no").substring(3, 5).toInt() * 60);
+  // ------------------------------------------------------------------------
+  settings.setDayOnTime(esp8266WebServer.arg("do").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("do").substring(3, 5).toInt() * 60);
+  
   message += settingshtml();
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);  
@@ -867,15 +924,50 @@ String settingshtml()
 String message = "<form action=\"/commitSettings\">";
     
     message += "<br><br><table align=\"center\"><tr><th>";
-  
+// ------------------------------------------------------------------------   
+    message += "Wlan: </th><th><input type=\"radio\" name=\"Wlan\" value=\"1\"";
+    if (settings.getwlan()) message += " checked";
+    message += "> on ";
+    message += " <input type=\"radio\" name=\"Wlan\" value=\"0\"";
+    if (!settings.getwlan()) message += " checked";
+    message += "> off</th></tr>";
 
-  message += "LDR: </th><th><input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"1\"";
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+
+
+// ------------------------------------------------------------------------
+  message += "<tr><td>";
+  message += "Night off:";
+  message += "</td><td>";
+  message += "<input type=\"time\" name=\"no\" value=\"";
+  if (hour(settings.getNightOffTime()) < 10) message += "0";
+  message += String(hour(settings.getNightOffTime())) + ":";
+  if (minute(settings.getNightOffTime()) < 10) message += "0";
+  message += String(minute(settings.getNightOffTime())) + "\"  placeholder=\"00:00\">";
+  message += " h";
+  message += "</td></tr>";
+  // ------------------------------------------------------------------------
+  message += "<tr><td>";
+  message += "Day on:";
+  message += "</td><td>";
+  message += "<input type=\"time\" name=\"do\" value=\"";
+  if (hour(settings.getDayOnTime()) < 10) message += "0";
+  message += String(hour(settings.getDayOnTime())) + ":";
+  if (minute(settings.getDayOnTime()) < 10) message += "0";
+  message += String(minute(settings.getDayOnTime())) + "\" placeholder=\"00:00\">";
+  message += " h";
+  message += "</td></tr>";
+  // ------------------------------------------------------------------------
+
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+  // ------------------------------------------------------------------------  
+  message += "<tr><th>LDR: </th><th><input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"1\"";
     if (settings.getUseLdr()) message += " checked";
     message += "> on ";
     message += " <input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"0\"";
     if (!settings.getUseLdr()) message += " checked";
     message += "> off</th></tr>";
-
+// ------------------------------------------------------------------------
 message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
   for (int i = 10; i <= 100; i += 10)
   {
@@ -885,9 +977,9 @@ message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
     message += String(i) + "</option>";
   }
   message += "</select> %  LDR</td></tr>";
-
+// ------------------------------------------------------------------------
     message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-    
+// ------------------------------------------------------------------------    
     message += "<tr><td>Help Dots every </td><td><select name=\"ldrdots\">";
     message += "<option value=\""+String(settings.getldrDot())+"\" selected>"+String(settings.getldrDot())+"</option>";
     message += "<option value=\"5\">5</option>";
@@ -895,9 +987,9 @@ message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
     message += "<option value=\"15\">15</option>";
     message += "<option value=\"30\">30</option>";
     message += "</select> Pixels.</td></tr>";
-
+// ------------------------------------------------------------------------
     message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-    
+  // ------------------------------------------------------------------------  
     message += "<tr><td>NTP:</td><td><input type=\"text\" size=\"20\" name=\"ntp\" value=\"";
     settings.getntpServer(location, sizeof(location));
     message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
@@ -905,9 +997,9 @@ message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
     settings.getntpServer(location, sizeof(location));
     message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
     message +="<br></td></tr>";
-
+// ------------------------------------------------------------------------
     message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-    
+// ------------------------------------------------------------------------    
     message += "<tr><td>Second: </td><td><select name=\"colsec\">";
     uint8_t colorNum = settings.getColSec();
     for(uint8_t j = 0; j <= COLOR_COUNT; j++){
@@ -945,21 +1037,21 @@ message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
       message += String(FPSTR(sColorStr[j])) + "</option>";
     }
     message += "</select></td></tr>";
-
+// ------------------------------------------------------------------------
   message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-
+// ------------------------------------------------------------------------
   message += "<tr><th>Update: </th><th><input type=\"radio\" name=\"UpdateStable\" value=\"1\"";
     if (settings.getUpdateStable()) message += " checked";
     message += "> Stable ";
-
+// ------------------------------------------------------------------------
     message += "<input type=\"hidden\" name=\"UpdateStable_old\" value=\"";
     message += String(settings.getUpdateStable());
     message += "\" placeholder=\"Enter NTP Server ...\">";
-    
+// ------------------------------------------------------------------------    
     message += " <br><input type=\"radio\" name=\"UpdateStable\" value=\"0\"";
     if (!settings.getUpdateStable()) message += " checked";
     message += "> Unstable</th></tr>";
-
+// ------------------------------------------------------------------------
     
 
     
@@ -997,21 +1089,22 @@ void handleReset()
 
 void handleFactoryReset()
 {
+  esp8266WebServer.send(200, "text/plain", "OK.");
   startShow(10); //Orange
   callBack();
   settings.resetToDefault();
-  esp8266WebServer.send(200, "text/plain", "OK.");
+  
   ESP.restart();
 }
 
 void handleWiFiReset()
 {
-  startShow(10); //Orange
-  callBack();
   esp8266WebServer.send(200, "text/plain", "OK.");
+  
+  WiFi.disconnect(true);
       WiFiManager wifiManager;
       wifiManager.resetSettings();
 
-  WiFi.disconnect(true);
+ 
   ESP.restart();
 }
