@@ -65,6 +65,12 @@ public:
   time_t getDayOnTime();
   void setDayOnTime(time_t dayOnTime);
 
+   void  setLat(char text[], int size);
+  char* getLat(char* locationText, int size);
+
+    void  setLon(char text[], int size);
+  char* getLon(char* locationText, int size);
+
 private:
   struct MySettings {
     uint8_t magicNumber;
@@ -81,6 +87,8 @@ private:
     boolean wlan;
     time_t nightOffTime;
     time_t dayOnTime;
+    char Lat[LEN_LOC_STR];
+    char Lon[LEN_LOC_STR];
   } mySettings;
 
   void loadFromEEPROM();

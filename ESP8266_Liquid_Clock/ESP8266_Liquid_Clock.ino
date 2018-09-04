@@ -9,6 +9,7 @@
 
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
+#include <ArduinoHttpClient.h>
 #include <Adafruit_NeoPixel.h>
 
 
@@ -50,9 +51,9 @@ LDR ldr(LDR_SIGNAL);
 
 // ------------------ Globale Variablen ---------------------
 // Die gelesene Zeit...
-int hours, minutes, seconds;
-bool startled, abschaltung;
-String updateInfo="0", modus = "showleds";
+int hours, minutes, seconds,WeatherTemperatur,WeatherHumidity;
+bool startled, WeatherTemperatur_negative;
+String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon;
 char location[LEN_LOC_STR];
 unsigned long second_befor, milli_befor;
 
@@ -76,7 +77,6 @@ ESP8266HTTPUpdateServer httpUpdater;
 void setup() {
 
 startled =true;
-abschaltung = false;
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.print("Neo-Pixel-Liquid-Clock-WEMOS"); 
@@ -134,14 +134,16 @@ getntp();
 
 #ifdef SYSLOGSERVER
     Serial.println("Starting syslog.");
-    syslog.log(LOG_INFO, ";#;dateTime;roomTemperature;roomHumidity;outdoorTemperature;outdoorHumidity;outdoorCode;ldrValue;errorCounterNtp;errorCounterDht;errorCounterYahoo;freeHeapSize;upTime");
+    syslog.log(LOG_INFO, ";#;dateTime;roomWeatherTemperature;roomWeatherHumidity;outdoorWeatherTemperature;outdoorWeatherHumidity;outdoorCode;ldrValue;errorCounterNtp;errorCounterDht;errorCounterYahoo;freeHeapSize;upTime");
 #endif
   
 }
 //setze milli 
 milli_befor = millis();
 getUpdateInfo();
+getWeatherTemperature();
 setupWebServer();
+modus = "clock";
 }
 
 /******************************************************************************
@@ -168,7 +170,7 @@ milli = millis() - milli_befor;
 
 
 
-  clearStrip();
+  
 /* ------------------ NTP --------------------- */
 if((minute() == 0) && second() == 0 && milli == 0)  //|| minute() == 5 || minute() == 10 || minute() == 15|| minute() == 20|| minute() == 25|| minute() == 30 || minute() == 35|| minute() == 35|| minute() == 40|| minute() == 45|| minute() == 50|| minute() == 55
 {
@@ -178,11 +180,14 @@ wlan(true);
 
 getntp();
 
-getUpdateInfo();
+//getUpdateInfo();
+
+getWeatherTemperature();
 
 wlan(settings.getwlan());
  }
 /* ------------------ NTP ENDE--------------------- */
+
 
     // Set nightmode/daymode.
     if ((hour() == hour(settings.getNightOffTime())) && (minute() == minute(settings.getNightOffTime())))
@@ -196,7 +201,7 @@ wlan(settings.getwlan());
     {
       
       
-      modus = "showleds";
+      modus = "clock";
     }
 
 
@@ -224,13 +229,14 @@ wlan(settings.getwlan());
 
 
 // nightmode/daymode.
-    if(modus == "showleds")
+    if(modus == "clock")
     {
+  clearStrip();
   int color = settings.getColHel();
   // bei Dunkelheit kleine Hilfslichter einschalten...
     if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
       for(int i=0; i<60; i += settings.getldrDot()) {
-        if(modus = "showleds")
+        if(modus == "clock")
         {
         strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
         }
@@ -253,6 +259,15 @@ wlan(settings.getwlan());
     
     strip.show();
     }
+
+    
+    if(modus =="WeatherTemperatur")
+    {
+   
+     
+      show_WeatherTemperatur();
+    }
+    
 
     if(modus == "blank")
     {
@@ -428,7 +443,205 @@ while(i <= startled+leds) {
 }
   
 }
- 
+
+/******************************************************************************
+  Get outdoor conditions from Yahoo.
+******************************************************************************/
+void getWeatherTemperature()
+{
+  Serial.println(F("Connecting..."));
+  WeatherStatus = "Connecting...";
+WiFiClient client;
+  // Connect to HTTP server
+  char servername[]="api.openweathermap.org"; 
+  if (!client.connect(servername, 80)) {
+    Serial.println(F("Connection failed"));
+    WeatherStatus  += "Connection failed";
+    return;
+  }
+
+  Serial.println(F("Connected!"));
+WeatherStatus += "Connected!";
+
+String url = "/data/2.5/weather?lat=";
+  url += settings.getLat(location, sizeof(location));
+  url += "&lon=";
+  url += settings.getLon(location, sizeof(location));
+  url += "&units=metric&appid=6d9ec0c530006d472308f93656026475";
+
+
+  // Send HTTP request
+  client.println("GET "+ url +" HTTP/1.0");
+  client.println(F("Host: api.openweathermap.org"));
+  client.println(F("Connection: close"));
+  if (client.println() == 0) {
+    Serial.println(F("Failed to send request"));
+    WeatherStatus +="Failed to send request";
+    return;
+  }
+
+  // Check HTTP status
+  char status[32] = {0};
+  client.readBytesUntil('\r', status, sizeof(status));
+  if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
+    Serial.print(F("Unexpected response: "));
+    WeatherStatus +="Unexpected response: ";
+    Serial.println(status);
+    WeatherStatus += status;
+    return;
+  }
+
+  // Skip HTTP headers
+  char endOfHeaders[] = "\r\n\r\n";
+  if (!client.find(endOfHeaders)) {
+    Serial.println(F("Invalid response"));
+    WeatherStatus += "Invalid response";
+    return;
+  }
+
+  // Allocate JsonBuffer
+  // Use arduinojson.org/assistant to compute the capacity.
+  const size_t capacity = JSON_OBJECT_SIZE(3) + JSON_ARRAY_SIZE(2) + 60;
+  DynamicJsonBuffer jsonBuffer(capacity);
+
+  // Parse JSON object
+  JsonObject& root = jsonBuffer.parseObject(client);
+  if (!root.success()) {
+    Serial.println(F("Parsing failed!"));
+     WeatherStatus += "Parsing failed!";
+    return;
+  }
+
+  // Extract values
+  Serial.println(F("Response:"));
+   WeatherStatus += "Response:";
+   WeatherIcon = root["weather"]["0"]["icon"].as<String>();
+   WeatherTemperatur = root["main"]["temp"].as<int>();
+   WeatherHumidity = root["main"]["humidity"].as<int>();
+   
+
+  
+
+
+  // Disconnect
+  client.stop();
+  }
+
+
+
+
+
+  void show_WeatherTemperatur()
+    {
+       
+        int i=0;
+        
+        int tmp_WeatherTemperatur = WeatherTemperatur;
+        if(WeatherTemperatur < 0){
+          tmp_WeatherTemperatur = WeatherTemperatur * (-1);
+          WeatherTemperatur_negative = true;
+        }else{
+          WeatherTemperatur_negative = false;
+        }
+        
+              while(tmp_WeatherTemperatur >= i)
+              {
+                convertRGB(i);
+                
+                i++;
+              }
+
+              
+       
+      if(!WeatherTemperatur_negative){
+              while(i <=NUM_PIXEL)
+              {
+                  setFloatPixelColor(i, 0,0,0);
+                
+                i++;
+              }
+      }else{
+        
+        int j = NUM_PIXEL -i;
+        i= 0;
+        while(i <= j)
+              {
+                  setFloatPixelColor(i, 0,0,0);
+                
+                i++;
+              }
+
+      }
+      
+              
+      
+      strip.show();
+       //delay(1000);
+      }
+
+  void convertRGB(int rgbWeatherTemperatur) 
+{ 
+//Maximalwert festlegen 
+// Beispiel 25°C 
+// Anzahl der Stufen / Maximalwert 
+// = 1020 / 25 
+// Faktor 40.8 
+int farbe = round(40.8 * rgbWeatherTemperatur);  
+int rot, gruen, blau;
+// 
+if (farbe < 1) 
+farbe = 0; 
+if (farbe > 1020) 
+farbe = 1020; 
+if (farbe <= 510) 
+{ 
+rot = 0; 
+if (farbe <= 255) 
+{ 
+gruen = 0 + farbe; 
+blau = 255; 
+} 
+if (farbe > 255) 
+{ 
+farbe = farbe - 255; 
+blau = 255 - farbe; 
+gruen = 255; 
+} 
+if (farbe > 255) 
+{ 
+farbe = farbe - 255; 
+blau = 255 - farbe; 
+gruen = 255; 
+} 
+} 
+
+if (farbe > 510) 
+{ 
+farbe = farbe - 510; 
+blau = 0; 
+if (farbe <= 255) 
+{ 
+rot = 0 + farbe; 
+gruen = 255; 
+} 
+if (farbe > 255) 
+{ 
+farbe = farbe - 255; 
+gruen = 255 - farbe; 
+rot = 255; 
+} 
+} 
+
+
+if(WeatherTemperatur_negative)
+  {
+    rgbWeatherTemperatur = NUM_PIXEL - rgbWeatherTemperatur;
+  }else{
+    
+  } 
+setFloatPixelColor(rgbWeatherTemperatur, rot,gruen,blau);
+strip.show();
+} 
 
  /* ------------------ NTP --------------------- */
 
@@ -571,12 +784,7 @@ void wlan(bool an){
   }
 
 /* ------------------ Wifi Ende--------------------- */
-  
-}
-
-/******************************************************************************
-  Get update info.
-******************************************************************************/
+}  
 
 void getUpdateInfo()
 {
@@ -590,7 +798,7 @@ void getUpdateInfo()
     return;
   }
 
-  if (client.verify(fingerprint, UPDATE_SERVER)) {
+  if (client.verify(UPDATE_fingerprint, UPDATE_SERVER)) {
     Serial.println("certificate matches");
   } else {
     Serial.println("certificate doesn't match");
@@ -693,7 +901,7 @@ void doupdate() {
                   return;
                 }
               
-                if (client.verify(fingerprint, UPDATE_SERVER)) {
+                if (client.verify(UPDATE_fingerprint, UPDATE_SERVER)) {
                   Serial.println("certificate matches");
                 } else {
                   Serial.println("certificate doesn't match");
@@ -702,7 +910,7 @@ void doupdate() {
               
                 Serial.print("Starting OTA from: ");
                 Serial.println(UPDATE_SERVER + String(UPDATE_FILE));
-                t_httpUpdate_return ret = ESPhttpUpdate.update("https://"+String(UPDATE_SERVER)+String(UPDATE_FILE),String(""),String(fingerprint));
+                t_httpUpdate_return ret = ESPhttpUpdate.update("https://"+String(UPDATE_SERVER)+String(UPDATE_FILE),String(""),String(UPDATE_fingerprint));
                
                 // if successful, ESP will restart
                 
@@ -727,12 +935,13 @@ void setupWebServer()
   esp8266WebServer.on("/updates", handleupdates); 
   esp8266WebServer.on("/Settings", handleSettings);
   esp8266WebServer.on("/commitSettings", []() {handleCommitSettings();});//; callBack();});
-  
+  esp8266WebServer.on("/modus", []() {handleModus();});//; callBack();});
+  esp8266WebServer.on("/temp", []() {handleTemp();});//; callBack();});
   esp8266WebServer.on("/wifiReset", handleWiFiReset);
   esp8266WebServer.on("/reset", handleReset);
   
   esp8266WebServer.begin();
-  Serial.print("gestarte!!");
+  Serial.print("gestartet!!");
 }
 
 String htmlTop(String page)
@@ -741,7 +950,7 @@ String htmlTop(String page)
   String message = "<!doctype html>";
   message += "<html style=\"height: 100%;\">";
   message += "<head>";
-  message += "<title>" + String(HOSTNAME) + "-" +page +"</title>";
+  message += "<title>" + String(HOSTNAME) + "-" +page +" - " + modus+"</title>";
   message += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">";
   //message += "<meta http-equiv=\"refresh\" content=\"60\" charset=\"UTF-8\">";
   message += "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css\">";
@@ -753,10 +962,15 @@ String htmlTop(String page)
   message += "</head>";
   message += "<body style=\"height: 100%;\">";
    message += "<span style=\"color:white\">";
-  message += "<table style=\"height: 100%; ; margin-left: auto; margin-right: auto; width: 300px; background-color: #53bbf4;\"><tbody><tr><td style=\"height: 10%;\">";
+  message += "<table style=\"height: 100%; ; margin-left: auto; margin-right: auto; width: 350px; background-color: #53bbf4;\"><tbody><tr><td style=\"height: 10%;\">";
+
+//https://fontawesome.com/v4.7.0/icons/
+  
   message += "&nbsp;&nbsp;<button onclick=\"window.location.href='/'\"><i class=\"fa fa-home\"></i></button>&nbsp;&nbsp; ";
   message += "<button onclick=\"window.location.href='/reset'\"><i class=\"fa fa-refresh\"></i></button>&nbsp;&nbsp;";
   message += "<button onclick=\"window.location.href='/Settings'\"><i class=\"fa fa-wrench\"></i></button>&nbsp;&nbsp; ";
+    message += "<button onclick=\"window.location.href='modus?modus=clock'\"><i class=\"fa fa-clock-o\"></i></button>&nbsp;&nbsp; ";
+  message += "<button onclick=\"window.location.href='modus?modus=WeatherTemperatur'\"><i class=\"fa fa-thermometer-half\"></i></button>&nbsp;&nbsp; ";
    message += "<button onclick=\"window.location.href='/update'\"><i class=\"fa fa-upload\"></i></button> &nbsp;&nbsp;";
    message +="</td></tr><tr><td style=\"height: 80%; vertical-align: top;\">";
   
@@ -838,23 +1052,38 @@ void handleRoot()
   }else{
      message += "<br><br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
   }
+ message += "<br><br>Modus: -"+ String(modus)+"-";
 
-  
+message += "<br><br>Temperature: "+ String(WeatherTemperatur)+"&deg; Grad Celsius";
+//message += "<br>"+String(WeatherStatus);
+message += "<br>Humidity: "+ String(WeatherHumidity)+" &#37;%- <img src=\"http://openweathermap.org/img/w/"+String(WeatherIcon)+".png\" >";  
   message += "<br><br>Setting Version: "+String(settings.getSettingVersion());
+  
   
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);
   
  
 }
-
+void handleTemp()
+{
+ // modus ="WeatherTemperatur";
+  WeatherTemperatur = esp8266WebServer.arg("WeatherTemperatur").toInt();
+    esp8266WebServer.send(200, "text/html", String(WeatherTemperatur)); 
+}
 void handleupdates()
 {
 
  doupdate();
 
 }
-
+void handleModus()
+{
+modus = String(esp8266WebServer.arg("modus"));
+callRoot();
+    esp8266WebServer.send(200, "text/html", modus);  
+    
+}
 void handleCommitSettings()
 {
 startShow(2); //Green
@@ -897,11 +1126,20 @@ settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
   
   settings.setUpdateStable(false);
 }
+if(esp8266WebServer.arg("no") != "00:00" || esp8266WebServer.arg("do") != "00:00")
+    {
+      settings.setNightOffTime(esp8266WebServer.arg("no").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("no").substring(3, 5).toInt() * 60);
+      // ------------------------------------------------------------------------
+      settings.setDayOnTime(esp8266WebServer.arg("do").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("do").substring(3, 5).toInt() * 60);
+    }
 
-  settings.setNightOffTime(esp8266WebServer.arg("no").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("no").substring(3, 5).toInt() * 60);
-  // ------------------------------------------------------------------------
-  settings.setDayOnTime(esp8266WebServer.arg("do").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("do").substring(3, 5).toInt() * 60);
-  
+  esp8266WebServer.arg("lat").toCharArray(text, sizeof(text), 0);
+  settings.setLat(text, sizeof(text));
+
+
+  esp8266WebServer.arg("lon").toCharArray(text, sizeof(text), 0);
+  settings.setLon(text, sizeof(text));
+    
   message += settingshtml();
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);  
@@ -943,7 +1181,7 @@ String message = "<form action=\"/commitSettings\">";
   if (hour(settings.getNightOffTime()) < 10) message += "0";
   message += String(hour(settings.getNightOffTime())) + ":";
   if (minute(settings.getNightOffTime()) < 10) message += "0";
-  message += String(minute(settings.getNightOffTime())) + "\"  placeholder=\"00:00\">";
+  message += String(minute(settings.getNightOffTime())) + "\"  placeholder=\"0\">";
   message += " h";
   message += "</td></tr>";
   // ------------------------------------------------------------------------
@@ -954,7 +1192,7 @@ String message = "<form action=\"/commitSettings\">";
   if (hour(settings.getDayOnTime()) < 10) message += "0";
   message += String(hour(settings.getDayOnTime())) + ":";
   if (minute(settings.getDayOnTime()) < 10) message += "0";
-  message += String(minute(settings.getDayOnTime())) + "\" placeholder=\"00:00\">";
+  message += String(minute(settings.getDayOnTime())) + "\" placeholder=\"0\">";
   message += " h";
   message += "</td></tr>";
   // ------------------------------------------------------------------------
@@ -1037,6 +1275,15 @@ message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
       message += String(FPSTR(sColorStr[j])) + "</option>";
     }
     message += "</select></td></tr>";
+    // ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+  // ------------------------------------------------------------------------  
+    message += "<tr><td>Lat:</td><td><input type=\"text\" size=\"20\" name=\"lat\" value=\"";
+    settings.getLat(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter Lat ...\">";
+    message += "<tr><td>Long:</td><td><input type=\"text\" size=\"20\" name=\"lon\" value=\"";
+    settings.getLon(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter Lat ...\">";
 // ------------------------------------------------------------------------
   message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
 // ------------------------------------------------------------------------

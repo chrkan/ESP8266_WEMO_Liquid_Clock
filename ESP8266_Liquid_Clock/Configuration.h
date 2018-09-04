@@ -33,12 +33,12 @@
 #define UPDATE_SERVER "raw.githubusercontent.com"
 #define UPDATE_INFOFILE "/chrkan/ESP8266_WEMO_Liquid_Clock/master/update/version.json"
 #define UPDATE_FILE     "/chrkan/ESP8266_WEMO_Liquid_Clock/master/update/ESP8266_Liquid_Clock.ino.generic.bin"
-#define fingerprint "CC AA 48 48 66 46 0E 91 53 2C 9C 7C 23 2A B1 74 4D 29 9D 33"
+#define UPDATE_fingerprint "CC AA 48 48 66 46 0E 91 53 2C 9C 7C 23 2A B1 74 4D 29 9D 33"
 
+#define DEFAULT_Lat "50.18233560"
+#define DEFAULT_Lon "8.73948050"
 
-
-
-#define SETTINGS_MAGIC_NUMBER 0x06
+#define SETTINGS_MAGIC_NUMBER 0x07
 #define SETTINGS_SettingVersion 0
 
 /* ------------------ Colors --------------------- */

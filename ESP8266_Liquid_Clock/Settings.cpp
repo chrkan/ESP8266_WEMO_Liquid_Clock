@@ -115,6 +115,31 @@ void Settings::setDayOnTime(time_t dayOnTime) {
   mySettings.dayOnTime = dayOnTime;
 }
 
+void Settings:: setLat(char text[], int size) {
+  int tmp = sizeof(mySettings.Lat);
+  memcpy(mySettings.Lat, text, min(tmp, size));
+}
+
+char* Settings::getLat(char* Lat, int size) {
+  memset(Lat, 0, size);
+  memcpy(Lat, mySettings.Lat, sizeof(mySettings.Lat));
+  return Lat;
+
+}
+
+
+void Settings:: setLon(char text[], int size) {
+  int tmp = sizeof(mySettings.Lon);
+  memcpy(mySettings.Lon, text, min(tmp, size));
+}
+
+char* Settings::getLon(char* Lon, int size) {
+  memset(Lon, 0, size);
+  memcpy(Lon, mySettings.Lon, sizeof(mySettings.Lon));
+  return Lon;
+
+}
+
 // Set all defaults.
 void Settings::resetToDefault() {
   Serial.println("*** Settings set to defaults in EEPROM. ***");
@@ -135,6 +160,12 @@ void Settings::resetToDefault() {
   mySettings.wlan = DEFAULT_wlan;
   mySettings.nightOffTime = 0;
   mySettings.dayOnTime = 0;
+  char charLAT[50] = DEFAULT_Lat;
+ tmp = sizeof(mySettings.Lat);
+  memcpy(mySettings.Lat, charLAT, min(tmp, 10));
+  char charLon[50] = DEFAULT_Lon;
+ tmp = sizeof(mySettings.Lon);
+  memcpy(mySettings.Lon, charLon, min(tmp, 10));
   saveToEEPROM();
 }
 
