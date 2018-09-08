@@ -71,6 +71,9 @@ public:
     void  setLon(char text[], int size);
   char* getLon(char* locationText, int size);
 
+  int16_t getSyncMinute();
+  void setSyncMinute(int16_t SyncMinute);
+
 private:
   struct MySettings {
     uint8_t magicNumber;
@@ -89,6 +92,7 @@ private:
     time_t dayOnTime;
     char Lat[LEN_LOC_STR];
     char Lon[LEN_LOC_STR];
+    int16_t SyncMinute;
   } mySettings;
 
   void loadFromEEPROM();

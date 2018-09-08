@@ -53,7 +53,7 @@ LDR ldr(LDR_SIGNAL);
 // Die gelesene Zeit...
 int hours, minutes, seconds,WeatherTemperatur,WeatherHumidity;
 bool startled, WeatherTemperatur_negative;
-String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon;
+String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon,WeatherName,WeatherTime;
 char location[LEN_LOC_STR];
 unsigned long second_befor, milli_befor;
 
@@ -172,7 +172,7 @@ milli = millis() - milli_befor;
 
   
 /* ------------------ NTP --------------------- */
-if((minute() == 0) && second() == 0 && milli == 0)  //|| minute() == 5 || minute() == 10 || minute() == 15|| minute() == 20|| minute() == 25|| minute() == 30 || minute() == 35|| minute() == 35|| minute() == 40|| minute() == 45|| minute() == 50|| minute() == 55
+if((minute() % settings.getSyncMinute()== 0) && second() == 0 && milli == 0)  //|| minute() == 5 || minute() == 10 || minute() == 15|| minute() == 20|| minute() == 25|| minute() == 30 || minute() == 35|| minute() == 35|| minute() == 40|| minute() == 45|| minute() == 50|| minute() == 55
 {
   
 wlan(true);
@@ -518,7 +518,8 @@ String url = "/data/2.5/weather?lat=";
    WeatherIcon = root["weather"]["0"]["icon"].as<String>();
    WeatherTemperatur = root["main"]["temp"].as<int>();
    WeatherHumidity = root["main"]["humidity"].as<int>();
-   
+   WeatherName = root["name"].as<String>();
+   WeatherTime = root["dt"].as<String>();
 
   
 
@@ -1053,10 +1054,14 @@ void handleRoot()
      message += "<br><br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
   }
  message += "<br><br>Modus: -"+ String(modus)+"-";
-
-message += "<br><br>Temperature: "+ String(WeatherTemperatur)+"&deg; Grad Celsius";
+message += "<br><br>Weather for: "+ String(WeatherName);
+message += "<br>Temperature: "+ String(WeatherTemperatur)+"&deg; Grad Celsius";
 //message += "<br>"+String(WeatherStatus);
-message += "<br>Humidity: "+ String(WeatherHumidity)+" &#37;%- <img src=\"http://openweathermap.org/img/w/"+String(WeatherIcon)+".png\" >";  
+message += "<br>Humidity: "+ String(WeatherHumidity)+" &#37;";
+//message += "- <img src=\"http://openweathermap.org/img/w/"+String(WeatherIcon)+".png\" >"; 
+ String l_line = WeatherTime;
+  time_t t = l_line.toInt(); 
+//message += "<br>"+String(hour(t) )+ ":" + String(minute(t));
   message += "<br><br>Setting Version: "+String(settings.getSettingVersion());
   
   
@@ -1108,6 +1113,8 @@ if(esp8266WebServer.arg("DEFAULT_LDR_Status") == "1")
 settings.setBrightness(esp8266WebServer.arg("br").toInt());
 
 settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
+
+settings.setSyncMinute(esp8266WebServer.arg("SyncMinute").toInt());
 
   char text[LEN_LOC_STR];
   memset(text, 0, sizeof(text));
@@ -1163,16 +1170,27 @@ String message = "<form action=\"/commitSettings\">";
     
     message += "<br><br><table align=\"center\"><tr><th>";
 // ------------------------------------------------------------------------   
-    message += "Wlan: </th><th><input type=\"radio\" name=\"Wlan\" value=\"1\"";
+    message += "Auto Wlan: </th><th><input type=\"radio\" name=\"Wlan\" value=\"1\"";
     if (settings.getwlan()) message += " checked";
     message += "> on ";
     message += " <input type=\"radio\" name=\"Wlan\" value=\"0\"";
     if (!settings.getwlan()) message += " checked";
     message += "> off</th></tr>";
 
+ // ------------------------------------------------------------------------
     message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+// ------------------------------------------------------------------------    
+    message += "<tr><td>Wlan Snc  every </td><td><select name=\"SyncMinute\">";
+    message += "<option value=\""+String(settings.getSyncMinute())+"\" selected>"+String(settings.getSyncMinute())+"</option>";
+    message += "<option value=\"5\">5</option>";
+    message += "<option value=\"10\">10</option>";
+    message += "<option value=\"15\">15</option>";
+    message += "<option value=\"30\">30</option>";
+    message += "</select> Minute.</td></tr>";
 
-
+ // ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+// ------------------------------------------------------------------------    
 // ------------------------------------------------------------------------
   message += "<tr><td>";
   message += "Night off:";

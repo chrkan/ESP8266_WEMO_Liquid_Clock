@@ -140,6 +140,14 @@ char* Settings::getLon(char* Lon, int size) {
 
 }
 
+void Settings::setSyncMinute(int16_t SyncMinute) {
+  mySettings.SyncMinute = SyncMinute;
+}
+
+int16_t Settings::getSyncMinute() {
+  return mySettings.SyncMinute;
+}
+
 // Set all defaults.
 void Settings::resetToDefault() {
   Serial.println("*** Settings set to defaults in EEPROM. ***");
@@ -166,6 +174,7 @@ void Settings::resetToDefault() {
   char charLon[50] = DEFAULT_Lon;
  tmp = sizeof(mySettings.Lon);
   memcpy(mySettings.Lon, charLon, min(tmp, 10));
+  mySettings.SyncMinute = DEFAULT_SyncMinute;
   saveToEEPROM();
 }
 

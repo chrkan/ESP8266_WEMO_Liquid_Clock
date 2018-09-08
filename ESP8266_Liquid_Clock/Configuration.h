@@ -21,7 +21,7 @@
 
 #define DEBUG
 
-#define FirmewareVersion  "20180826"
+#define FirmewareVersion  "20180908"
 
 // ------------------ Pixel Einstellungen ---------------------
 
@@ -38,7 +38,7 @@
 #define DEFAULT_Lat "50.18233560"
 #define DEFAULT_Lon "8.73948050"
 
-#define SETTINGS_MAGIC_NUMBER 0x07
+#define SETTINGS_MAGIC_NUMBER 0x08
 #define SETTINGS_SettingVersion 0
 
 /* ------------------ Colors --------------------- */
@@ -120,6 +120,7 @@
 #define OTA_PASS "1234"
 #define SHOW_IP
 #define DEFAULT_wlan true //true = Wlan IMMER An, false = Wlan wird nach NTP Abfrage beendet
+#define DEFAULT_SyncMinute 30
 
 
 /* ------------------ LDR --------------------- */
