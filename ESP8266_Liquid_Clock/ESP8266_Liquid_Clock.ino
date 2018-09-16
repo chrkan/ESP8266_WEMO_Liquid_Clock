@@ -184,7 +184,7 @@ getntp();
 
 getWeatherTemperature();
 
-wlan(settings.getwlan());
+wlan(!settings.getwlan());
  }
 /* ------------------ NTP ENDE--------------------- */
 
@@ -1180,7 +1180,7 @@ String message = "<form action=\"/commitSettings\">";
  // ------------------------------------------------------------------------
     message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
 // ------------------------------------------------------------------------    
-    message += "<tr><td>Wlan Snc  every </td><td><select name=\"SyncMinute\">";
+    message += "<tr><td>Wlan Sync  every </td><td><select name=\"SyncMinute\">";
     message += "<option value=\""+String(settings.getSyncMinute())+"\" selected>"+String(settings.getSyncMinute())+"</option>";
     message += "<option value=\"5\">5</option>";
     message += "<option value=\"10\">10</option>";

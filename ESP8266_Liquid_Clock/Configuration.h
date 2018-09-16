@@ -21,7 +21,7 @@
 
 #define DEBUG
 
-#define FirmewareVersion  "20180908"
+#define FirmewareVersion  "20180916"
 
 // ------------------ Pixel Einstellungen ---------------------
 
@@ -119,7 +119,7 @@
 #define WIFI_AP_PASS "12345678"
 #define OTA_PASS "1234"
 #define SHOW_IP
-#define DEFAULT_wlan true //true = Wlan IMMER An, false = Wlan wird nach NTP Abfrage beendet
+#define DEFAULT_wlan true //false = Wlan IMMER An, true = Wlan wird nach NTP Abfrage beendet
 #define DEFAULT_SyncMinute 30
 
 
