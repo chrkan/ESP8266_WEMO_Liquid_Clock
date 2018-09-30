@@ -1,10 +1,10 @@
 /**
-    Liquid Clock WEMO
-   ESP8266
-    bassierend auf der Liquid Clock von Christian Aschoff
-    Board: Wemos D1 R2 & Mini
-    Flashsize 4M (3M SPIFFS)
-
+ *  Liquid Clock WEMO 
+ * ESP8266
+ *  bassierend auf der Liquid Clock von Christian Aschoff
+ *  Board: Wemos D1 R2 & Mini
+ *  Flashsize 4M (3M SPIFFS)
+ * 
  * */
 
 #include <ArduinoJson.h>
@@ -15,9 +15,9 @@
 
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
-#include <ESP8266httpUpdate.h>
+#include <ESP8266httpUpdate.h>    
 #include <ESP8266WebServer.h>
-#include <ESP8266WiFi.h>
+#include <ESP8266WiFi.h>   
 
 #include <Syslog.h>
 #include <TimeLib.h>
@@ -51,9 +51,9 @@ LDR ldr(LDR_SIGNAL);
 
 // ------------------ Globale Variablen ---------------------
 // Die gelesene Zeit...
-int hours, minutes, seconds, WeatherTemperatur, WeatherHumidity;
+int hours, minutes, Moonphase, seconds,WeatherTemperatur,WeatherHumidity;
 bool startled, WeatherTemperatur_negative;
-String updateInfo = "0", modus = "clock", WeatherStatus, WeatherIcon, WeatherName, WeatherTime;
+String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon,WeatherName,WeatherTime;
 char location[LEN_LOC_STR];
 unsigned long second_befor, milli_befor;
 
@@ -76,24 +76,24 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 void setup() {
 
-  startled = true;
+startled =true;
   Serial.begin(115200);
   Serial.setDebugOutput(true);
-  Serial.print("Neo-Pixel-Liquid-Clock-WEMOS");
+  Serial.print("Neo-Pixel-Liquid-Clock-WEMOS"); 
   strip.begin();
   strip.setBrightness(254);
   leds (0, 15, strip.Color(127, 127, 127), 50);
 
+    
+ 
 
-
-
-  wlan(true);
+wlan(true);
   if (WiFi.status() == WL_CONNECTED)
   {
 
 
 
-    /* ------------------ OTA --------------------- */
+/* ------------------ OTA --------------------- */
     Serial.println("Starting OTA service.");
 
 #ifdef DEBUG
@@ -118,32 +118,33 @@ void setup() {
     ArduinoOTA.setPassword(OTA_PASS);
     ArduinoOTA.begin();
 
-    /* ------------------ OTA Ende --------------------- */
+/* ------------------ OTA Ende --------------------- */ 
 
-    /* ------------------ NTP --------------------- */
-    getntp();
-    /* ------------------ NTP Ende ---------------- */
+/* ------------------ NTP --------------------- */
+getntp();
+/* ------------------ NTP Ende ---------------- */
 
-    Serial.println("Starting updateserver.");
-    httpUpdater.setup(&esp8266WebServer);
+  Serial.println("Starting updateserver.");
+  httpUpdater.setup(&esp8266WebServer);
 
-
-
-
-    startled = false;
+  
+  
+ 
+  startled = false;
 
 #ifdef SYSLOGSERVER
     Serial.println("Starting syslog.");
     syslog.log(LOG_INFO, ";#;dateTime;roomWeatherTemperature;roomWeatherHumidity;outdoorWeatherTemperature;outdoorWeatherHumidity;outdoorCode;ldrValue;errorCounterNtp;errorCounterDht;errorCounterYahoo;freeHeapSize;upTime");
 #endif
-
-  }
-  //setze milli
-  milli_befor = millis();
-  getUpdateInfo();
-  getWeatherTemperature();
-  setupWebServer();
-  modus = "clock";
+  
+}
+//setze milli 
+milli_befor = millis();
+getMoonphase();
+getUpdateInfo();
+getWeatherTemperature();
+setupWebServer();
+modus = "clock";
 }
 
 /******************************************************************************
@@ -151,58 +152,60 @@ void setup() {
 ******************************************************************************/
 
 void loop() {
-  long milli = 0;
+  long milli =0;
+
+  
+if(second() == second_befor)
+{
+  //wenn in der gleichen sekunde dann ziehe milli von millis ab
+milli = millis() - milli_befor;
+  
+}else{
+  //setze milli auf 0
+  milli = 0;
+  //setze second_Befor auf die aktuelle sekunde
+  second_befor = second();
+  //setze milli_befor auf aktuelle millis
+  milli_befor = millis();
+}
 
 
-  if (second() == second_befor)
-  {
-    //wenn in der gleichen sekunde dann ziehe milli von millis ab
-    milli = millis() - milli_befor;
 
-  } else {
-    //setze milli auf 0
-    milli = 0;
-    //setze second_Befor auf die aktuelle sekunde
-    second_befor = second();
-    //setze milli_befor auf aktuelle millis
-    milli_befor = millis();
-  }
+  
+/* ------------------ NTP --------------------- */
+if((minute() % settings.getSyncMinute()== 0) && second() == 0 && milli == 0)  //|| minute() == 5 || minute() == 10 || minute() == 15|| minute() == 20|| minute() == 25|| minute() == 30 || minute() == 35|| minute() == 35|| minute() == 40|| minute() == 45|| minute() == 50|| minute() == 55
+{
+  
+wlan(true);
 
 
+getntp();
+
+//getUpdateInfo();
+
+getMoonphase();
+
+getWeatherTemperature();
+
+wlan(!settings.getwlan());
+ }
+/* ------------------ NTP ENDE--------------------- */
 
 
-  /* ------------------ NTP --------------------- */
-  if ((minute() % settings.getSyncMinute() == 0) && second() == 0 && milli == 0) //|| minute() == 5 || minute() == 10 || minute() == 15|| minute() == 20|| minute() == 25|| minute() == 30 || minute() == 35|| minute() == 35|| minute() == 40|| minute() == 45|| minute() == 50|| minute() == 55
-  {
-
-    wlan(true);
-
-
-    getntp();
-
-    //getUpdateInfo();
-
-    getWeatherTemperature();
-
-    wlan(!settings.getwlan());
-  }
-  /* ------------------ NTP ENDE--------------------- */
-
-
-  // Set nightmode/daymode.
-  if ((hour() == hour(settings.getNightOffTime())) && (minute() == minute(settings.getNightOffTime())))
-  {
-
+    // Set nightmode/daymode.
+    if ((hour() == hour(settings.getNightOffTime())) && (minute() == minute(settings.getNightOffTime())))
+    {
+      
     clearStrip();
-    modus = "blank";
-  }
+      modus = "blank";
+    }
 
-  if ( (hour() == hour(settings.getDayOnTime())) && (minute() == minute(settings.getDayOnTime())))
-  {
-
-
-    modus = "clock";
-  }
+    if ( (hour() == hour(settings.getDayOnTime())) && (minute() == minute(settings.getDayOnTime())))
+    {
+      
+      
+      modus = "clock";
+    }
 
 
 
@@ -210,81 +213,86 @@ void loop() {
   esp8266WebServer.handleClient();
   ArduinoOTA.handle();
 
+  
+   
+    hours = hour();
+    while(hours >= 12) {
+      hours -= 12;
+    }
+    minutes = minute();
+    seconds = second();
+    
+   
+  
 
 
-  hours = hour();
-  while (hours >= 12) {
-    hours -= 12;
-  }
-  minutes = minute();
-  seconds = second();
+ /* ------------------ led --------------------- */
+  
+   
 
 
-
-
-
-  /* ------------------ led --------------------- */
-
-
-
-
-  // nightmode/daymode.
-  if (modus == "clock")
-  {
-    clearStrip();
-    int color = settings.getColHel();
-    // bei Dunkelheit kleine Hilfslichter einschalten...
-    if (ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
-      for (int i = 0; i < 60; i += settings.getldrDot()) {
-        if (modus == "clock")
+// nightmode/daymode.
+    if(modus == "clock")
+    {
+  clearStrip();
+  int color = settings.getColHel();
+  // bei Dunkelheit kleine Hilfslichter einschalten...
+    if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
+      for(int i=0; i<60; i += settings.getldrDot()) {
+        if(modus == "clock")
         {
-          strip.setPixelColor(i, defaultColors[color].red, defaultColors[color].green, defaultColors[color].blue);
+        strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
         }
       }
     }
-
-    // Positionen berechnen und ausgeben...
-    // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
-    double doubleDisplaySeconds = (double) second() + (milli * 0.001);
-    color = settings.getColSec();
-    setFloatPixelColor(doubleDisplaySeconds, defaultColors[color].red, defaultColors[color].green, defaultColors[color].blue);
-
+    
+       // Positionen berechnen und ausgeben...
+   // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
+   double doubleDisplaySeconds = (double) second() + (milli * 0.001);
+   color = settings.getColSec();
+    setFloatPixelColor(doubleDisplaySeconds, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+    
     color = settings.getColMin();
     double doubleDisplayMinutes = (double) minutes + (doubleDisplaySeconds / 60.0);
-    setFloatPixelColor(doubleDisplayMinutes, defaultColors[color].red, defaultColors[color].green, defaultColors[color].blue);
-
+    setFloatPixelColor(doubleDisplayMinutes, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+    
     color = settings.getColHou();
     double doubleDisplayHours = doubleMap((double) (hours * 60.0 + minutes), 0.0, 12.0 * 60.0, 0.0, 60.0);
-    setFloatPixelColor(doubleDisplayHours, defaultColors[color].red, defaultColors[color].green, defaultColors[color].blue);
-
+    setFloatPixelColor(doubleDisplayHours, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+    
     strip.show();
-  }
+    }
 
+    
+    if(modus =="WeatherTemperatur")
+    {
+   
+     
+      show_WeatherTemperatur();
+    }
 
-  if (modus == "WeatherTemperatur")
-  {
+ if(modus =="Moonphase")
+    {
+      show_Moonphase();
+    }
+   
 
-
-    show_WeatherTemperatur();
-  }
-
-
-  if (modus == "blank")
-  {
+    if(modus == "blank")
+    {
     startShow(0); //blank
     clearStrip();
-  }
-
+    }
+  
 }
 
 
 /**
-   Pixelfarben nicht nur auf ganze Pixel setzten, sonder auch "dazwischen".
-*/
+ * Pixelfarben nicht nur auf ganze Pixel setzten, sonder auch "dazwischen".
+ */
 void setFloatPixelColor(float pos, byte r, byte g, byte b) {
   float anteil = 1.0 - (pos - (int) pos);
   strip.setPixelColor((byte) pos, (byte) ((float) r * anteil), (byte) ((float) g * anteil), (byte) ((float) b * anteil));
-  if ((byte) pos + 1 != NUM_PIXEL) {
+  if((byte) pos + 1 != NUM_PIXEL) {   
     strip.setPixelColor(1 + (byte) pos, (byte) ((float) r * (1.0 - anteil)), (byte) ((float) g * (1.0 - anteil)), (byte) ((float) b * (1.0 - anteil)));
   }
   else {
@@ -293,34 +301,34 @@ void setFloatPixelColor(float pos, byte r, byte g, byte b) {
 }
 
 /**
-   Funktion zum loeschen des Strips.
-*/
-void clearStrip() {
-  for (int i = 0; i < NUM_PIXEL; i++) {
+ * Funktion zum loeschen des Strips.
+ */
+void clearStrip(){
+  for(int i = 0; i < NUM_PIXEL; i++) {
     strip.setPixelColor(i, 0);
   }
 }
 
-void colourstrib(int r, int g, int b ) {
+void colourstrib(int r, int g, int b ){
 
-  for (int i = 0; i < 60; i ++) {
-    strip.setPixelColor(i, r, g, b);
-  }
-  strip.show();
+   for(int i=0; i<60; i ++) {
+        strip.setPixelColor(i, r, g, b);
+      }
+       strip.show();
 }
 
 /**
-   Funktion fuer saubere 'Regenbogen'-Farben.
-   Kopiert aus den Adafruit-Beispielen (strand).
-*/
-uint32_t wheel(byte WheelPos) {
-  if (WheelPos < 85) {
+ * Funktion fuer saubere 'Regenbogen'-Farben.
+ * Kopiert aus den Adafruit-Beispielen (strand).
+ */
+ uint32_t wheel(byte WheelPos) {
+  if(WheelPos < 85) {
     return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-  }
-  else if (WheelPos < 170) {
+  } 
+  else if(WheelPos < 170) {
     WheelPos -= 85;
     return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  }
+  } 
   else {
     WheelPos -= 170;
     return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
@@ -328,44 +336,44 @@ uint32_t wheel(byte WheelPos) {
 }
 
 /**
-   Map-Funktion fuer Doublöe-Werte.
-*/
+ * Map-Funktion fuer Doublöe-Werte.
+ */
 double doubleMap(double x, double in_min, double in_max, double out_min, double out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 void startShow(int i) {
-  switch (i) {
+  switch(i){
     case 0: colorWipe(strip.Color(0, 0, 0), 50);    // Black/off
-      break;
+            break;
     case 1: colorWipe(strip.Color(255, 0, 0), 50);  // Red
-      break;
+            break;
     case 2: colorWipe(strip.Color(0, 255, 0), 50);  // Green
-      break;
+            break;
     case 3: colorWipe(strip.Color(0, 0, 255), 50);  // Blue
-      break;
+            break;
     case 4: theaterChase(strip.Color(127, 127, 127), 50); // White
-      break;
+            break;
     case 5: theaterChase(strip.Color(127,   0,   0), 50); // Red
-      break;
+            break;
     case 6: theaterChase(strip.Color(  0,   0, 127), 50); // Blue
-      break;
+            break;
     case 7: rainbow(20);
-      break;
+            break;
     case 8: rainbowCycle(20);
-      break;
+            break;
     case 9: theaterChaseRainbow(50);
-      break;
-    case 10: colorWipe(strip.Color(255, 140, 0), 50);  // Orange
-      break;
-    case 11: theaterChase(strip.Color(255, 140, 0), 50);  // Orange
-      break;
+            break;
+    case 10: colorWipe(strip.Color(255,140,0), 50);    // Orange
+            break;
+    case 11: theaterChase(strip.Color(255,140,0), 50);    // Orange
+            break;
   }
 }
 
 // Fill the dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
-  for (uint16_t i = 0; i < strip.numPixels(); i++) {
+  for(uint16_t i=0; i<strip.numPixels(); i++) {
     strip.setPixelColor(i, c);
     strip.show();
     delay(wait);
@@ -375,9 +383,9 @@ void colorWipe(uint32_t c, uint8_t wait) {
 void rainbow(uint8_t wait) {
   uint16_t i, j;
 
-  for (j = 0; j < 256; j++) {
-    for (i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, wheel((i + j) & 255));
+  for(j=0; j<256; j++) {
+    for(i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, wheel((i+j) & 255));
     }
     strip.show();
     delay(wait);
@@ -388,8 +396,8 @@ void rainbow(uint8_t wait) {
 void rainbowCycle(uint8_t wait) {
   uint16_t i, j;
 
-  for (j = 0; j < 256 * 5; j++) { // 5 cycles of all colors on wheel
-    for (i = 0; i < strip.numPixels(); i++) {
+  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+    for(i=0; i< strip.numPixels(); i++) {
       strip.setPixelColor(i, wheel(((i * 256 / strip.numPixels()) + j) & 255));
     }
     strip.show();
@@ -399,17 +407,17 @@ void rainbowCycle(uint8_t wait) {
 
 //Theatre-style crawling lights.
 void theaterChase(uint32_t c, uint8_t wait) {
-  for (int j = 0; j < 10; j++) { //do 10 cycles of chasing
-    for (int q = 0; q < 3; q++) {
-      for (int i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, c);  //turn every third pixel on
+  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
+    for (int q=0; q < 3; q++) {
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, c);    //turn every third pixel on
       }
       strip.show();
 
       delay(wait);
 
-      for (int i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, 0);      //turn every third pixel off
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
       }
     }
   }
@@ -417,33 +425,120 @@ void theaterChase(uint32_t c, uint8_t wait) {
 
 //Theatre-style crawling lights with rainbow effect
 void theaterChaseRainbow(uint8_t wait) {
-  for (int j = 0; j < 256; j++) {   // cycle all 256 colors in the wheel
-    for (int q = 0; q < 3; q++) {
-      for (int i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, wheel( (i + j) % 255)); //turn every third pixel on
+  for (int j=0; j < 256; j++) {     // cycle all 256 colors in the wheel
+    for (int q=0; q < 3; q++) {
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, wheel( (i+j) % 255));    //turn every third pixel on
       }
       strip.show();
 
       delay(wait);
 
-      for (int i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, 0);      //turn every third pixel off
+      for (int i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
       }
     }
   }
 }
 void leds (int startled, int leds, uint32_t c, int wait)
 {
-  int i = startled;
-  while (i <= startled + leds) {
-    strip.setPixelColor(i, c);
+  int i=startled;
+while(i <= startled+leds) {
+  strip.setPixelColor(i, c);
     strip.show();
     delay(wait);
-    i++;
+  i++;
+}
+  
+}
+/******************************************************************************
+  Get Moonphase
+******************************************************************************/
+int getMoonphase()
+{
+  int y = year(); 
+  int m = month();
+  int d = day();
+  int b;
+  int c;
+  int e;
+  double jd;
+  if (m < 3)
+  {
+    y--;
+    m += 12;
   }
-
+  ++m;
+  c = 365.25 * y;
+  e = 30.6 * m;
+  jd = c + e + d - 694039.09; // jd is total days elapsed
+  jd /= 29.53;                // divide by the moon cycle (29.53 days)
+  b = jd;                   // int(jd) -> b, take integer part of jd
+  jd -= b;                // subtract integer part to leave fractional part of original jd
+  b = jd * 8 + 0.5;         // scale fraction from 0-8 and round by adding 0.5
+  b = b & 7;                // 0 and 8 are the same so turn 8 into 0
+  Moonphase = b;
 }
 
+void show_Moonphase()
+{
+  int start_led = 0, stop_led = 0;
+  clearStrip();
+    switch( Moonphase)
+      {
+        case 0 :
+        start_led = 0;
+        stop_led = 0;
+        break;
+    
+        case 1 :
+        start_led = 10;
+        stop_led = 20;
+        break;
+    
+        case 2 :
+        start_led = 5;
+        stop_led = 25;
+        break;
+    
+        case 3 :
+        start_led = 0;
+        stop_led = 30;
+        break;
+    
+        case 4 :
+        start_led = 0;
+        stop_led = 60;
+        break;
+    
+        case 5 :
+        start_led = 35;
+        stop_led = 55;
+        break;
+    
+        case 6 :
+        start_led = 40;
+        stop_led = 50;
+        break;
+    
+        case 7 :
+        start_led = 43;
+        stop_led = 47;
+        break;
+      }
+
+      
+    while(stop_led >= start_led)
+    {
+    strip.setPixelColor(start_led, strip.Color(255, 255, 255));
+   
+    
+    start_led++;
+    }
+    strip.show(); 
+  
+  
+}
 /******************************************************************************
   Get outdoor conditions from Yahoo.
 ******************************************************************************/
@@ -451,9 +546,9 @@ void getWeatherTemperature()
 {
   Serial.println(F("Connecting..."));
   WeatherStatus = "Connecting...";
-  WiFiClient client;
+WiFiClient client;
   // Connect to HTTP server
-  char servername[] = "api.openweathermap.org";
+  char servername[]="api.openweathermap.org"; 
   if (!client.connect(servername, 80)) {
     Serial.println(F("Connection failed"));
     WeatherStatus  += "Connection failed";
@@ -461,9 +556,9 @@ void getWeatherTemperature()
   }
 
   Serial.println(F("Connected!"));
-  WeatherStatus += "Connected!";
+WeatherStatus += "Connected!";
 
-  String url = "/data/2.5/weather?lat=";
+String url = "/data/2.5/weather?lat=";
   url += settings.getLat(location, sizeof(location));
   url += "&lon=";
   url += settings.getLon(location, sizeof(location));
@@ -471,12 +566,12 @@ void getWeatherTemperature()
 
 
   // Send HTTP request
-  client.println("GET " + url + " HTTP/1.0");
+  client.println("GET "+ url +" HTTP/1.0");
   client.println(F("Host: api.openweathermap.org"));
   client.println(F("Connection: close"));
   if (client.println() == 0) {
     Serial.println(F("Failed to send request"));
-    WeatherStatus += "Failed to send request";
+    WeatherStatus +="Failed to send request";
     return;
   }
 
@@ -485,7 +580,7 @@ void getWeatherTemperature()
   client.readBytesUntil('\r', status, sizeof(status));
   if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
     Serial.print(F("Unexpected response: "));
-    WeatherStatus += "Unexpected response: ";
+    WeatherStatus +="Unexpected response: ";
     Serial.println(status);
     WeatherStatus += status;
     return;
@@ -508,170 +603,170 @@ void getWeatherTemperature()
   JsonObject& root = jsonBuffer.parseObject(client);
   if (!root.success()) {
     Serial.println(F("Parsing failed!"));
-    WeatherStatus += "Parsing failed!";
+     WeatherStatus += "Parsing failed!";
     return;
   }
 
   // Extract values
   Serial.println(F("Response:"));
-  WeatherStatus += "Response:";
-  WeatherIcon = root["weather"]["0"]["icon"].as<String>();
-  WeatherTemperatur = root["main"]["temp"].as<int>();
-  WeatherHumidity = root["main"]["humidity"].as<int>();
-  WeatherName = root["name"].as<String>();
-  WeatherTime = root["dt"].as<String>();
+   WeatherStatus += "Response:";
+   WeatherIcon = root["weather"]["0"]["icon"].as<String>();
+   WeatherTemperatur = root["main"]["temp"].as<int>();
+   WeatherHumidity = root["main"]["humidity"].as<int>();
+   WeatherName = root["name"].as<String>();
+   WeatherTime = root["dt"].as<String>();
 
-
+  
 
 
   // Disconnect
   client.stop();
-}
-
-
-
-
-
-void show_WeatherTemperatur()
-{
-
-  int i = 0;
-
-  int tmp_WeatherTemperatur = WeatherTemperatur;
-  if (WeatherTemperatur < 0) {
-    tmp_WeatherTemperatur = WeatherTemperatur * (-1);
-    WeatherTemperatur_negative = true;
-  } else {
-    WeatherTemperatur_negative = false;
-  }
-
-  while (tmp_WeatherTemperatur >= i)
-  {
-    convertRGB(i);
-
-    i++;
   }
 
 
 
-  if (!WeatherTemperatur_negative) {
-    while (i <= NUM_PIXEL)
+
+
+  void show_WeatherTemperatur()
     {
-      setFloatPixelColor(i, 0, 0, 0);
+       
+        int i=0;
+        
+        int tmp_WeatherTemperatur = WeatherTemperatur;
+        if(WeatherTemperatur < 0){
+          tmp_WeatherTemperatur = WeatherTemperatur * (-1);
+          WeatherTemperatur_negative = true;
+        }else{
+          WeatherTemperatur_negative = false;
+        }
+        
+              while(tmp_WeatherTemperatur >= i)
+              {
+                convertRGB(i);
+                
+                i++;
+              }
 
-      i++;
-    }
-  } else {
+              
+       
+      if(!WeatherTemperatur_negative){
+              while(i <=NUM_PIXEL)
+              {
+                  setFloatPixelColor(i, 0,0,0);
+                
+                i++;
+              }
+      }else{
+        
+        int j = NUM_PIXEL -i;
+        i= 0;
+        while(i <= j)
+              {
+                  setFloatPixelColor(i, 0,0,0);
+                
+                i++;
+              }
 
-    int j = NUM_PIXEL - i;
-    i = 0;
-    while (i <= j)
-    {
-      setFloatPixelColor(i, 0, 0, 0);
+      }
+      
+              
+      
+     
+       //delay(1000);
+      }
 
-      i++;
-    }
+  void convertRGB(int rgbWeatherTemperatur) 
+{ 
+//Maximalwert festlegen 
+// Beispiel 25°C 
+// Anzahl der Stufen / Maximalwert 
+// = 1020 / 25 
+// Faktor 40.8 
+int farbe = round(40.8 * rgbWeatherTemperatur);  
+int rot, gruen, blau;
+// 
+if (farbe < 1) 
+farbe = 0; 
+if (farbe > 1020) 
+farbe = 1020; 
+if (farbe <= 510) 
+{ 
+rot = 0; 
+if (farbe <= 255) 
+{ 
+gruen = 0 + farbe; 
+blau = 255; 
+} 
+if (farbe > 255) 
+{ 
+farbe = farbe - 255; 
+blau = 255 - farbe; 
+gruen = 255; 
+} 
+if (farbe > 255) 
+{ 
+farbe = farbe - 255; 
+blau = 255 - farbe; 
+gruen = 255; 
+} 
+} 
 
-  }
-
-
-
-  strip.show();
-  //delay(1000);
-}
-
-void convertRGB(int rgbWeatherTemperatur)
-{
-  //Maximalwert festlegen
-  // Beispiel 25°C
-  // Anzahl der Stufen / Maximalwert
-  // = 1020 / 25
-  // Faktor 40.8
-  int farbe = round(40.8 * rgbWeatherTemperatur);
-  int rot, gruen, blau;
-  //
-  if (farbe < 1)
-    farbe = 0;
-  if (farbe > 1020)
-    farbe = 1020;
-  if (farbe <= 510)
-  {
-    rot = 0;
-    if (farbe <= 255)
-    {
-      gruen = 0 + farbe;
-      blau = 255;
-    }
-    if (farbe > 255)
-    {
-      farbe = farbe - 255;
-      blau = 255 - farbe;
-      gruen = 255;
-    }
-    if (farbe > 255)
-    {
-      farbe = farbe - 255;
-      blau = 255 - farbe;
-      gruen = 255;
-    }
-  }
-
-  if (farbe > 510)
-  {
-    farbe = farbe - 510;
-    blau = 0;
-    if (farbe <= 255)
-    {
-      rot = 0 + farbe;
-      gruen = 255;
-    }
-    if (farbe > 255)
-    {
-      farbe = farbe - 255;
-      gruen = 255 - farbe;
-      rot = 255;
-    }
-  }
+if (farbe > 510) 
+{ 
+farbe = farbe - 510; 
+blau = 0; 
+if (farbe <= 255) 
+{ 
+rot = 0 + farbe; 
+gruen = 255; 
+} 
+if (farbe > 255) 
+{ 
+farbe = farbe - 255; 
+gruen = 255 - farbe; 
+rot = 255; 
+} 
+} 
 
 
-  if (WeatherTemperatur_negative)
+if(WeatherTemperatur_negative)
   {
     rgbWeatherTemperatur = NUM_PIXEL - rgbWeatherTemperatur;
-  } else {
+  }else{
+    
+  } 
+setFloatPixelColor(rgbWeatherTemperatur, rot,gruen,blau);
+strip.show();
+} 
 
-  }
-  setFloatPixelColor(rgbWeatherTemperatur, rot, gruen, blau);
-  strip.show();
-}
-
-/* ------------------ NTP --------------------- */
+ /* ------------------ NTP --------------------- */
 
 void getntp()
 {
 
-  if (WiFi.status() == WL_CONNECTED)
+if (WiFi.status() == WL_CONNECTED)
   {
     time_t tempNtpTime = getNtpTime(settings.getntpServer(location, sizeof(location)));
     if (tempNtpTime)
     {
-      setTime(timeZone.toLocal(tempNtpTime));
+    setTime(timeZone.toLocal(tempNtpTime));
+    
+    
 
-
-
-      if (startled) {
-        // alle LEDs an...
-        // clearStrip();
-        for (byte i = 45; i < NUM_PIXEL; i++) {
-          strip.setPixelColor(i, wheel((256 / NUM_PIXEL) * i));
-          strip.show();
-          delay(50);
-        }
-      }
-
-
+    if(startled){
+    // alle LEDs an...
+   // clearStrip();
+    for(byte i=45; i<NUM_PIXEL; i++) {
+    strip.setPixelColor(i, wheel((256 / NUM_PIXEL) * i));
+    strip.show();
+    delay(50);
+    }
+    }
+    
+   
     }
   }
-
+  
 }
 
 
@@ -715,81 +810,81 @@ time_t getNtpTime(const char server[])
   }
   if (errorCounterNtp < 255) errorCounterNtp++;
 #ifdef DEBUG
-  //startShow(1); //red
-  leds (45, 15, strip.Color(255, 0, 0) , 50);
+   //startShow(1); //red
+   leds (45, 15, strip.Color(255, 0, 0) , 50);
   Serial.printf("Error (NTP): %u\r\n", errorCounterNtp);
 #endif
   return 0;
 }
 
 
-/* ------------------ Wifi --------------------- */
+ /* ------------------ Wifi --------------------- */
 
-
-void wlan(bool an) {
-
-  if (an) {
-
+ 
+void wlan(bool an){
+ 
+  if(an) {
+    
     WiFiManager wifiManager;
-    if (WiFi.status() != WL_CONNECTED)
-    {
-      if (startled) {
+     if (WiFi.status() != WL_CONNECTED)
+     {
+      if(startled){
         leds (15, 15, strip.Color(0, 0, 255), 50);
       }
       //clearStrip();
-      wifiManager.setTimeout(WIFI_SETUP_TIMEOUT);
-      wifiManager.autoConnect(HOSTNAME, WIFI_AP_PASS);
+  wifiManager.setTimeout(WIFI_SETUP_TIMEOUT);
+  wifiManager.autoConnect(HOSTNAME, WIFI_AP_PASS);
 
+  
+        if (WiFi.status() != WL_CONNECTED)
+        {
+         
+          WiFi.mode(WIFI_AP);
+          Serial.println("No WLAN connected. Staying in AP mode.");
+          
+     
+              if(startled){
+              startShow(3); //blue
+               
+               leds (15, 15, strip.Color(255, 0, 0) , 50);//red
+               leds (45, 15, strip.Color(255, 0, 0) , 50);//red
+              }
+              
+          }
+          else
+          {
+            WiFi.mode(WIFI_STA);
+            Serial.println("WLAN connected. Switching to STA mode.");
+            //delay(1000);
+          
+            //clearStrip();
+              if(startled){
+            //startShow(2);  // Green
+         leds (30, 15, strip.Color(0, 255, 0), 50);//green
+              }
+            // mDNS is needed to see HOSTNAME in Arduino IDE.
+            Serial.println("Starting mDNS responder.");
+            MDNS.begin(HOSTNAME);
+            //MDNS.addService("http", "tcp", 80);
+          }
+     }
 
-      if (WiFi.status() != WL_CONNECTED)
-      {
-
-        WiFi.mode(WIFI_AP);
-        Serial.println("No WLAN connected. Staying in AP mode.");
-
-
-        if (startled) {
-          startShow(3); //blue
-
-          leds (15, 15, strip.Color(255, 0, 0) , 50);//red
-          leds (45, 15, strip.Color(255, 0, 0) , 50);//red
-        }
-
-      }
-      else
-      {
-        WiFi.mode(WIFI_STA);
-        Serial.println("WLAN connected. Switching to STA mode.");
-        //delay(1000);
-
-        //clearStrip();
-        if (startled) {
-          //startShow(2);  // Green
-          leds (30, 15, strip.Color(0, 255, 0), 50);//green
-        }
-        // mDNS is needed to see HOSTNAME in Arduino IDE.
-        Serial.println("Starting mDNS responder.");
-        MDNS.begin(HOSTNAME);
-        //MDNS.addService("http", "tcp", 80);
-      }
-    }
-
-
-
-
-
-  } else {
-
+    
+ 
+  
+  
+  }else{
+   
     WiFi.mode(WIFI_OFF);
-
+   
   }
 
-  /* ------------------ Wifi Ende--------------------- */
-}
+/* ------------------ Wifi Ende--------------------- */
+}  
 
 void getUpdateInfo()
 {
-  //https://github.com/esp8266/Arduino/blob/4897e0006b5b0123a2fa31f67b14a3fff65ce561/doc/esp8266wifi/client-secure-examples.md
+//https://github.com/esp8266/Arduino/blob/4897e0006b5b0123a2fa31f67b14a3fff65ce561/doc/esp8266wifi/client-secure-examples.md
   // Use WiFiClientSecure class to create TLS connection
   WiFiClientSecure client;
   Serial.print("connecting to ");
@@ -825,52 +920,52 @@ void getUpdateInfo()
   }
   //read content
   Serial.println("-------read content -------------------------------");
-
+  
   while (client.connected()) {
     String line = client.readStringUntil('\n');
     if (line != "\r") {
-      line = line.substring(line.indexOf('{'), line.lastIndexOf('}') + 1);
+    line = line.substring(line.indexOf('{'), line.lastIndexOf('}') + 1);
 
-      //Serial.printf("Status: %u\r\n", statusCode);
-      Serial.printf("Response is %u bytes.\r\n", line.length());
-      Serial.println(line);
-      Serial.println("Parsing JSON.");
+    //Serial.printf("Status: %u\r\n", statusCode);
+    Serial.printf("Response is %u bytes.\r\n", line.length());
+    Serial.println(line);
+    Serial.println("Parsing JSON.");
 
-      //DynamicJsonBuffer jsonBuffer;
-      StaticJsonBuffer<256> jsonBuffer;
-      JsonObject &responseJson = jsonBuffer.parseObject(line);
-      if (responseJson.success())
-      {
+    //DynamicJsonBuffer jsonBuffer;
+    StaticJsonBuffer<256> jsonBuffer;
+    JsonObject &responseJson = jsonBuffer.parseObject(line);
+    if (responseJson.success())
+    {
+      
+  if(settings.getUpdateStable())
+  {
+    Serial.println("Stable Version");
+  updateInfo = responseJson["channel"]["stable"]["version"].as<String>();
+  }else{
+    updateInfo = responseJson["channel"]["unstable"]["version"].as<String>();
+  Serial.println("Unstable Version");
+  }
+      
 
-        if (settings.getUpdateStable())
-        {
-          Serial.println("Stable Version");
-          updateInfo = responseJson["channel"]["stable"]["version"].as<String>();
-        } else {
-          updateInfo = responseJson["channel"]["unstable"]["version"].as<String>();
-          Serial.println("Unstable Version");
-        }
+     
+      return;
+     }
+     Serial.println(updateInfo);
 
-
-
-        return;
-      }
-      Serial.println(updateInfo);
-
-
+      
     }
     else {
       Serial.println("fertig!");
       break;
     }
 
+    
+    
+}
 
 
-  }
-
-
-  ///  else Serial.printf("Status: %u\r\n", statusCode);
-  // Serial.println("Error (" + String(UPDATE_SERVER) + ")");
+///  else Serial.printf("Status: %u\r\n", statusCode);
+ // Serial.println("Error (" + String(UPDATE_SERVER) + ")");
 
 }
 
@@ -880,46 +975,46 @@ void getUpdateInfo()
 
 void doupdate() {
 
-
-  //wlan(false);
-  for (uint8_t t = 4; t > 0; t--) {
-    Serial.printf("[SETUP] WAIT %d...\n", t);
-    Serial.flush();
-    delay(1000);
-  }
-
-  wlan(true);
-  startShow(10); //orange
-  // wait for WiFi connection
-  if (WiFi.status() == WL_CONNECTED) {
-
-    // Use WiFiClientSecure class to create TLS connection
-    WiFiClientSecure client;
-    Serial.print("connecting to ");
-    Serial.println(UPDATE_SERVER);
-    if (!client.connect(UPDATE_SERVER, 443)) {
-      Serial.println("connection failed");
-      return;
+  
+    //wlan(false);
+    for(uint8_t t = 4; t > 0; t--) {
+        Serial.printf("[SETUP] WAIT %d...\n", t);
+        Serial.flush();
+        delay(1000);
     }
-
-    if (client.verify(UPDATE_fingerprint, UPDATE_SERVER)) {
-      Serial.println("certificate matches");
-    } else {
-      Serial.println("certificate doesn't match");
-      return;
+    
+    wlan(true);
+    startShow(10); //orange
+    // wait for WiFi connection
+    if(WiFi.status() == WL_CONNECTED) {
+        
+               // Use WiFiClientSecure class to create TLS connection
+                WiFiClientSecure client;
+                Serial.print("connecting to ");
+                Serial.println(UPDATE_SERVER);
+                if (!client.connect(UPDATE_SERVER, 443)) {
+                  Serial.println("connection failed");
+                  return;
+                }
+              
+                if (client.verify(UPDATE_fingerprint, UPDATE_SERVER)) {
+                  Serial.println("certificate matches");
+                } else {
+                  Serial.println("certificate doesn't match");
+                  return;
+                }
+              
+                Serial.print("Starting OTA from: ");
+                Serial.println(UPDATE_SERVER + String(UPDATE_FILE));
+                t_httpUpdate_return ret = ESPhttpUpdate.update("https://"+String(UPDATE_SERVER)+String(UPDATE_FILE),String(""),String(UPDATE_fingerprint));
+               
+                // if successful, ESP will restart
+                
+                Serial.println("update failed");
+                Serial.println((int) ret);
+                
+    
     }
-
-    Serial.print("Starting OTA from: ");
-    Serial.println(UPDATE_SERVER + String(UPDATE_FILE));
-    t_httpUpdate_return ret = ESPhttpUpdate.update("https://" + String(UPDATE_SERVER) + String(UPDATE_FILE), String(""), String(UPDATE_fingerprint));
-
-    // if successful, ESP will restart
-
-    Serial.println("update failed");
-    Serial.println((int) ret);
-
-
-  }
 }
 
 
@@ -933,54 +1028,50 @@ void setupWebServer()
   esp8266WebServer.on("/", handleRoot);
 
   esp8266WebServer.on("/factoryReset", handleFactoryReset);
-  esp8266WebServer.on("/updates", handleupdates);
+  esp8266WebServer.on("/updates", handleupdates); 
   esp8266WebServer.on("/Settings", handleSettings);
-  esp8266WebServer.on("/commitSettings", []() {
-    handleCommitSettings();
-  });//; callBack();});
-  esp8266WebServer.on("/modus", []() {
-    handleModus();
-  });//; callBack();});
-  esp8266WebServer.on("/temp", []() {
-    handleTemp();
-  });//; callBack();});
+  esp8266WebServer.on("/commitSettings", []() {handleCommitSettings();});//; callBack();});
+  esp8266WebServer.on("/modus", []() {handleModus();});//; callBack();});
+  esp8266WebServer.on("/moon", []() {handleMoon();});//; callBack();});
+  esp8266WebServer.on("/temp", []() {handleTemp();});//; callBack();});
   esp8266WebServer.on("/wifiReset", handleWiFiReset);
   esp8266WebServer.on("/reset", handleReset);
-
+  
   esp8266WebServer.begin();
   Serial.print("gestartet!!");
 }
 
 String htmlTop(String page)
 {
-  Serial.print("Starte WebServer: " + page);
+  Serial.print("Starte WebServer: "+ page);
   String message = "<!doctype html>";
   message += "<html style=\"height: 100%;\">";
   message += "<head>";
-  message += "<title>" + String(HOSTNAME) + "-" + page + " - " + modus + "</title>";
+  message += "<title>" + String(HOSTNAME) + "-" +page +" - " + modus+"</title>";
   message += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">";
   //message += "<meta http-equiv=\"refresh\" content=\"60\" charset=\"UTF-8\">";
   message += "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css\">";
   message += "<style>";
   message += "body{text-align:center;color:#333333;font-family:Sans-serif;font-size:16px;}";
   message += "button{background-color:#FFFFFF;text-align:center;color:#53bbf4;width:50px;padding:10px;border:5px solid #FFFFFF;font-size:24px;border-radius:10px;}";
-
+  
   message += "</style>";
   message += "</head>";
   message += "<body style=\"height: 100%;\">";
-  message += "<span style=\"color:white\">";
+   message += "<span style=\"color:white\">";
   message += "<table style=\"height: 100%; ; margin-left: auto; margin-right: auto; width: 350px; background-color: #53bbf4;\"><tbody><tr><td style=\"height: 10%;\">";
 
-  //https://fontawesome.com/v4.7.0/icons/
-
+//https://fontawesome.com/v4.7.0/icons/
+  
   message += "&nbsp;&nbsp;<button onclick=\"window.location.href='/'\"><i class=\"fa fa-home\"></i></button>&nbsp;&nbsp; ";
   message += "<button onclick=\"window.location.href='/reset'\"><i class=\"fa fa-refresh\"></i></button>&nbsp;&nbsp;";
   message += "<button onclick=\"window.location.href='/Settings'\"><i class=\"fa fa-wrench\"></i></button>&nbsp;&nbsp; ";
-  message += "<button onclick=\"window.location.href='modus?modus=clock'\"><i class=\"fa fa-clock-o\"></i></button>&nbsp;&nbsp; ";
+    message += "<button onclick=\"window.location.href='modus?modus=clock'\"><i class=\"fa fa-clock-o\"></i></button>&nbsp;&nbsp; ";
   message += "<button onclick=\"window.location.href='modus?modus=WeatherTemperatur'\"><i class=\"fa fa-thermometer-half\"></i></button>&nbsp;&nbsp; ";
-  message += "<button onclick=\"window.location.href='/update'\"><i class=\"fa fa-upload\"></i></button> &nbsp;&nbsp;";
-  message += "</td></tr><tr><td style=\"height: 80%; vertical-align: top;\">";
-
+    message += "<button onclick=\"window.location.href='modus?modus=Moonphase'\"><i class=\"fa fa-moon-o\"></i></button>&nbsp;&nbsp; ";
+   message += "<button onclick=\"window.location.href='/update'\"><i class=\"fa fa-upload\"></i></button> &nbsp;&nbsp;";
+   message +="</td></tr><tr><td style=\"height: 80%; vertical-align: top;\">";
+  
   return message;
 }
 
@@ -988,10 +1079,10 @@ String htmlTop(String page)
 String htmlButton()
 {
   String message = "</td></tr><tr><td  style=\"height: 10%;\">";
-  message += "________________________________<br>";
+ message += "________________________________<br>";
   message += "ckany 2018<br>";
-
-  message += "</td></tr></tbody></table>     ";
+  
+  message+="</td></tr></tbody></table>     ";
   message += "</span>";
   message += "</body>";
   message += "</html>";
@@ -1011,7 +1102,7 @@ void callBack()
 void handleNotFound()
 {
   String message = htmlTop("404");
-  message = "<br><br>404 - File Not Found.";
+  message ="<br><br>404 - File Not Found.";
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);
 }
@@ -1020,11 +1111,11 @@ void handleNotFound()
 void handleRoot()
 {
   //Handler for the rooth path
-
-  String message = htmlTop("Home");
+ 
+    String message = htmlTop("Home");
 
   WiFiManager wifiManager;
-  message += "<br><br>Wlan: " + WiFi.SSID() + "<br>";
+  message += "<br><br>Wlan: " + WiFi.SSID()+"<br>";
   //message += "<br>"+WiFi.localIP();
   time_t tempEspTime = now();
   message += "<br><br>Time: " + String(hour(tempEspTime)) + ":";
@@ -1032,95 +1123,103 @@ void handleRoot()
   message += String(minute(tempEspTime));
   if (timeZone.locIsDST(now())) message += " (DST)";
   message += "<br>" + String(dayStr(weekday(tempEspTime))) + ", " + String(monthStr(month(tempEspTime))) + " " + String(day(tempEspTime)) + ". " + String(year(tempEspTime));
-
+  
   message += "<br><br>Free RAM: " + String(system_get_free_heap_size()) + " bytes";
   message += "<br>Reset reason: " + ESP.getResetReason();
-
+  
   message += "<br><br>LDR: ";
-
-  if (settings.getUseLdr())
+  
+  if(settings.getUseLdr())
   {
-    message += "Active ";
-  } else {
-    message += "deactive ";
+    message +="Active ";
+  }else{
+    message +="deactive ";
   }
   message += String(ldr.value()) + "  %(min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
-  message += "<br>Help Dots every: " + String(settings.getldrDot()) + " Pixels, by " + String(settings.getBrightness()) + "% Brightness." ;
-  message += "<br><br>NTP Server: " + String(settings.getntpServer(location, sizeof(location)));
+  message += "<br>Help Dots every: "+String(settings.getldrDot())+" Pixels, by "+String(settings.getBrightness())+"% Brightness." ;
+  message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
 
   if (updateInfo > String(FirmewareVersion))
   {
-    if (settings.getUpdateStable())
-    {
-      message += "<br><br><span style=\"color:red;\"><a href=\"/update\">Firmwareupdate available! (" + updateInfo + ")<br> Your Firmeware: " + String(FirmewareVersion) + "</a></span>";
-    } else {
-      message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")<br> Your Firmeware: " + String(FirmewareVersion) + "</a></span>";
-    }
-  } else {
-    message += "<br><br><span style=\"color:green;\">Your Firmeware: " + String(FirmewareVersion) + " (" + updateInfo + ")</span>";
+    if(settings.getUpdateStable())
+      {
+        message += "<br><br><span style=\"color:red;\"><a href=\"/update\">Firmwareupdate available! (" + updateInfo + ")<br> Your Firmeware: "+ String(FirmewareVersion) +"</a></span>";
+      }else{
+        message += "<br><br><span style=\"color:red;\"><a href=\"/updates\">Firmwareupdate available! (" + updateInfo + ")<br> Your Firmeware: "+ String(FirmewareVersion) +"</a></span>";
+      }
+  }else{
+     message += "<br><br><span style=\"color:green;\">Your Firmeware: "+ String(FirmewareVersion) +" (" + updateInfo + ")</span>";
   }
-  message += "<br><br>Modus: -" + String(modus) + "-";
-  message += "<br><br>Weather for: " + String(WeatherName);
-  message += "<br>Temperature: " + String(WeatherTemperatur) + "&deg; Grad Celsius";
-  //message += "<br>"+String(WeatherStatus);
-  message += "<br>Humidity: " + String(WeatherHumidity) + " &#37;";
-  //message += "- <img src=\"http://openweathermap.org/img/w/"+String(WeatherIcon)+".png\" >";
-  String l_line = WeatherTime;
-  time_t t = l_line.toInt();
-  //message += "<br>"+String(hour(t) )+ ":" + String(minute(t));
-  message += "<br><br>Setting Version: " + String(settings.getSettingVersion());
-
-
+ message += "<br><br>Modus: -"+ String(modus)+"-";
+message += "<br><br>Weather for: "+ String(WeatherName);
+message += "<br>Temperature: "+ String(WeatherTemperatur)+"&deg; Grad Celsius";
+//message += "<br>"+String(WeatherStatus);
+message += "<br>Humidity: "+ String(WeatherHumidity)+" &#37;";
+//message += "- <img src=\"http://openweathermap.org/img/w/"+String(WeatherIcon)+".png\" >"; 
+ String l_line = WeatherTime;
+  time_t t = l_line.toInt(); 
+//message += "<br>"+String(hour(t) )+ ":" + String(minute(t));
+  message += "<br><br>Setting Version: "+String(settings.getSettingVersion());
+  
+  
   message += htmlButton();
   esp8266WebServer.send(200, "text/html", message);
-
-
+  
+ 
 }
 void handleTemp()
 {
-  // modus ="WeatherTemperatur";
+ // modus ="WeatherTemperatur";
   WeatherTemperatur = esp8266WebServer.arg("WeatherTemperatur").toInt();
-  esp8266WebServer.send(200, "text/html", String(WeatherTemperatur));
+    esp8266WebServer.send(200, "text/html", String(WeatherTemperatur)); 
 }
+
+void handleMoon()
+{
+ // modus ="WeatherTemperatur";
+  Moonphase = esp8266WebServer.arg("phase").toInt();
+    esp8266WebServer.send(200, "text/html", String(WeatherTemperatur)); 
+}
+
 void handleupdates()
 {
 
-  doupdate();
+ doupdate();
 
 }
 void handleModus()
 {
-  modus = String(esp8266WebServer.arg("modus"));
-  callRoot();
-  esp8266WebServer.send(200, "text/html", modus);
-
+modus = String(esp8266WebServer.arg("modus"));
+callRoot();
+    esp8266WebServer.send(200, "text/html", modus);  
+    
 }
 void handleCommitSettings()
 {
-  startShow(2); //Green
-  String message = htmlTop("Home");
+startShow(2); //Green
+String message = htmlTop("Home");
 
-  if (esp8266WebServer.arg("Wlan") == "1")
-  {
-    settings.setwlan(true);
-  } else {
+if(esp8266WebServer.arg("Wlan") == "1") 
+{ 
+  settings.setwlan(true);
+}else{
+  
+  settings.setwlan(false);
+}
 
-    settings.setwlan(false);
-  }
+if(esp8266WebServer.arg("DEFAULT_LDR_Status") == "1") 
+{ 
+  settings.setUseLdr(true);
+}else{
+  
+  settings.setUseLdr(false);
+}
 
-  if (esp8266WebServer.arg("DEFAULT_LDR_Status") == "1")
-  {
-    settings.setUseLdr(true);
-  } else {
+settings.setBrightness(esp8266WebServer.arg("br").toInt());
 
-    settings.setUseLdr(false);
-  }
+settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
 
-  settings.setBrightness(esp8266WebServer.arg("br").toInt());
-
-  settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
-
-  settings.setSyncMinute(esp8266WebServer.arg("SyncMinute").toInt());
+settings.setSyncMinute(esp8266WebServer.arg("SyncMinute").toInt());
 
   char text[LEN_LOC_STR];
   memset(text, 0, sizeof(text));
@@ -1132,19 +1231,19 @@ void handleCommitSettings()
   settings.setColHou(esp8266WebServer.arg("colhour").toInt());
   settings.setColHel(esp8266WebServer.arg("colhel").toInt());
 
-  if (esp8266WebServer.arg("UpdateStable") == "1")
-  {
-    settings.setUpdateStable(true);
-  } else {
-
-    settings.setUpdateStable(false);
-  }
-  if (esp8266WebServer.arg("no") != "00:00" || esp8266WebServer.arg("do") != "00:00")
-  {
-    settings.setNightOffTime(esp8266WebServer.arg("no").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("no").substring(3, 5).toInt() * 60);
-    // ------------------------------------------------------------------------
-    settings.setDayOnTime(esp8266WebServer.arg("do").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("do").substring(3, 5).toInt() * 60);
-  }
+  if(esp8266WebServer.arg("UpdateStable") == "1") 
+{ 
+  settings.setUpdateStable(true);
+}else{
+  
+  settings.setUpdateStable(false);
+}
+if(esp8266WebServer.arg("no") != "00:00" || esp8266WebServer.arg("do") != "00:00")
+    {
+      settings.setNightOffTime(esp8266WebServer.arg("no").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("no").substring(3, 5).toInt() * 60);
+      // ------------------------------------------------------------------------
+      settings.setDayOnTime(esp8266WebServer.arg("do").substring(0, 2).toInt() * 3600 + esp8266WebServer.arg("do").substring(3, 5).toInt() * 60);
+    }
 
   esp8266WebServer.arg("lat").toCharArray(text, sizeof(text), 0);
   settings.setLat(text, sizeof(text));
@@ -1152,52 +1251,52 @@ void handleCommitSettings()
 
   esp8266WebServer.arg("lon").toCharArray(text, sizeof(text), 0);
   settings.setLon(text, sizeof(text));
-
+    
   message += settingshtml();
   message += htmlButton();
-  esp8266WebServer.send(200, "text/html", message);
+  esp8266WebServer.send(200, "text/html", message);  
   delay(500);
   settings.saveToEEPROM();
-  if (esp8266WebServer.arg("UpdateStable") != esp8266WebServer.arg("UpdateStable_old"))
+  if(esp8266WebServer.arg("UpdateStable") != esp8266WebServer.arg("UpdateStable_old"))
   {
     getUpdateInfo();
   }
 
-  if (esp8266WebServer.arg("ntp") != esp8266WebServer.arg("ntp_old"))
+  if(esp8266WebServer.arg("ntp") != esp8266WebServer.arg("ntp_old"))
   {
     handleReset();
   }
 
-
+  
 }
 String settingshtml()
 {
-  String message = "<form action=\"/commitSettings\">";
+String message = "<form action=\"/commitSettings\">";
+    
+    message += "<br><br><table align=\"center\"><tr><th>";
+// ------------------------------------------------------------------------   
+    message += "Auto Wlan: </th><th><input type=\"radio\" name=\"Wlan\" value=\"1\"";
+    if (settings.getwlan()) message += " checked";
+    message += "> on ";
+    message += " <input type=\"radio\" name=\"Wlan\" value=\"0\"";
+    if (!settings.getwlan()) message += " checked";
+    message += "> off</th></tr>";
 
-  message += "<br><br><table align=\"center\"><tr><th>";
-  // ------------------------------------------------------------------------
-  message += "Auto Wlan: </th><th><input type=\"radio\" name=\"Wlan\" value=\"1\"";
-  if (settings.getwlan()) message += " checked";
-  message += "> on ";
-  message += " <input type=\"radio\" name=\"Wlan\" value=\"0\"";
-  if (!settings.getwlan()) message += " checked";
-  message += "> off</th></tr>";
+ // ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+// ------------------------------------------------------------------------    
+    message += "<tr><td>Wlan Sync  every </td><td><select name=\"SyncMinute\">";
+    message += "<option value=\""+String(settings.getSyncMinute())+"\" selected>"+String(settings.getSyncMinute())+"</option>";
+    message += "<option value=\"5\">5</option>";
+    message += "<option value=\"10\">10</option>";
+    message += "<option value=\"15\">15</option>";
+    message += "<option value=\"30\">30</option>";
+    message += "</select> Minute.</td></tr>";
 
-  // ------------------------------------------------------------------------
-  message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><td>Wlan Sync  every </td><td><select name=\"SyncMinute\">";
-  message += "<option value=\"" + String(settings.getSyncMinute()) + "\" selected>" + String(settings.getSyncMinute()) + "</option>";
-  message += "<option value=\"5\">5</option>";
-  message += "<option value=\"10\">10</option>";
-  message += "<option value=\"15\">15</option>";
-  message += "<option value=\"30\">30</option>";
-  message += "</select> Minute.</td></tr>";
-
-  // ------------------------------------------------------------------------
-  message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-  // ------------------------------------------------------------------------
-  // ------------------------------------------------------------------------
+ // ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+// ------------------------------------------------------------------------    
+// ------------------------------------------------------------------------
   message += "<tr><td>";
   message += "Night off:";
   message += "</td><td>";
@@ -1221,16 +1320,16 @@ String settingshtml()
   message += "</td></tr>";
   // ------------------------------------------------------------------------
 
-  message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-  // ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+  // ------------------------------------------------------------------------  
   message += "<tr><th>LDR: </th><th><input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"1\"";
-  if (settings.getUseLdr()) message += " checked";
-  message += "> on ";
-  message += " <input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"0\"";
-  if (!settings.getUseLdr()) message += " checked";
-  message += "> off</th></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
+    if (settings.getUseLdr()) message += " checked";
+    message += "> on ";
+    message += " <input type=\"radio\" name=\"DEFAULT_LDR_Status\" value=\"0\"";
+    if (!settings.getUseLdr()) message += " checked";
+    message += "> off</th></tr>";
+// ------------------------------------------------------------------------
+message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
   for (int i = 10; i <= 100; i += 10)
   {
     message += "<option value=\"" + String(i) + "\"";
@@ -1239,109 +1338,109 @@ String settingshtml()
     message += String(i) + "</option>";
   }
   message += "</select> %  LDR</td></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><td>Help Dots every </td><td><select name=\"ldrdots\">";
-  message += "<option value=\"" + String(settings.getldrDot()) + "\" selected>" + String(settings.getldrDot()) + "</option>";
-  message += "<option value=\"5\">5</option>";
-  message += "<option value=\"10\">10</option>";
-  message += "<option value=\"15\">15</option>";
-  message += "<option value=\"30\">30</option>";
-  message += "</select> Pixels.</td></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><td>NTP:</td><td><input type=\"text\" size=\"20\" name=\"ntp\" value=\"";
-  settings.getntpServer(location, sizeof(location));
-  message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR - 1) + "}\" placeholder=\"Enter NTP Server ...\">";
-  message += "<input type=\"hidden\" name=\"ntp_old\" value=\"";
-  settings.getntpServer(location, sizeof(location));
-  message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR - 1) + "}\" placeholder=\"Enter NTP Server ...\">";
-  message += "<br></td></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><td>Second: </td><td><select name=\"colsec\">";
-  uint8_t colorNum = settings.getColSec();
-  for (uint8_t j = 0; j <= COLOR_COUNT; j++) {
-    message += "<option value=\"" + String(j) + "\"";
-    if (colorNum == j) message += " selected";
-    message += ">";
-    message += String(FPSTR(sColorStr[j])) + "</option>";
-  }
-  message += "</select></td></tr>";
-  message += "<tr><td>Minutes: </td><td><select name=\"colmin\">";
-  colorNum = settings.getColMin();
-  for (uint8_t j = 0; j <= COLOR_COUNT; j++) {
-    message += "<option value=\"" + String(j) + "\"";
-    if (colorNum == j) message += " selected";
-    message += ">";
-    message += String(FPSTR(sColorStr[j])) + "</option>";
-  }
-  message += "</select></td></tr>";
-  message += "<tr><td>Hour: </td><td><select name=\"colhour\">";
-  colorNum = settings.getColHou();
-  for (uint8_t j = 0; j <= COLOR_COUNT; j++) {
-    message += "<option value=\"" + String(j) + "\"";
-    if (colorNum == j) message += " selected";
-    message += ">";
-    message += String(FPSTR(sColorStr[j])) + "</option>";
-  }
-  message += "</select></td></tr>";
+// ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+// ------------------------------------------------------------------------    
+    message += "<tr><td>Help Dots every </td><td><select name=\"ldrdots\">";
+    message += "<option value=\""+String(settings.getldrDot())+"\" selected>"+String(settings.getldrDot())+"</option>";
+    message += "<option value=\"5\">5</option>";
+    message += "<option value=\"10\">10</option>";
+    message += "<option value=\"15\">15</option>";
+    message += "<option value=\"30\">30</option>";
+    message += "</select> Pixels.</td></tr>";
+// ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+  // ------------------------------------------------------------------------  
+    message += "<tr><td>NTP:</td><td><input type=\"text\" size=\"20\" name=\"ntp\" value=\"";
+    settings.getntpServer(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
+    message += "<input type=\"hidden\" name=\"ntp_old\" value=\"";
+    settings.getntpServer(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter NTP Server ...\">";
+    message +="<br></td></tr>";
+// ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+// ------------------------------------------------------------------------    
+    message += "<tr><td>Second: </td><td><select name=\"colsec\">";
+    uint8_t colorNum = settings.getColSec();
+    for(uint8_t j = 0; j <= COLOR_COUNT; j++){
+      message += "<option value=\"" +String(j) + "\"";
+      if (colorNum == j) message += " selected";
+      message += ">";
+      message += String(FPSTR(sColorStr[j])) + "</option>";
+    }
+    message += "</select></td></tr>";
+    message += "<tr><td>Minutes: </td><td><select name=\"colmin\">";
+    colorNum = settings.getColMin();
+    for(uint8_t j = 0; j <= COLOR_COUNT; j++){
+      message += "<option value=\"" +String(j) + "\"";
+      if (colorNum == j) message += " selected";
+      message += ">";
+      message += String(FPSTR(sColorStr[j])) + "</option>";
+    }
+    message += "</select></td></tr>";
+    message += "<tr><td>Hour: </td><td><select name=\"colhour\">";
+    colorNum = settings.getColHou();
+    for(uint8_t j = 0; j <= COLOR_COUNT; j++){
+      message += "<option value=\"" +String(j) + "\"";
+      if (colorNum == j) message += " selected";
+      message += ">";
+      message += String(FPSTR(sColorStr[j])) + "</option>";
+    }
+    message += "</select></td></tr>";
 
-  message += "<tr><td>Help Dots:</td><td> <select name=\"colhel\">";
-  colorNum = settings.getColHel();
-  for (uint8_t j = 0; j <= COLOR_COUNT; j++) {
-    message += "<option value=\"" + String(j) + "\"";
-    if (colorNum == j) message += " selected";
-    message += ">";
-    message += String(FPSTR(sColorStr[j])) + "</option>";
-  }
-  message += "</select></td></tr>";
-  // ------------------------------------------------------------------------
+     message += "<tr><td>Help Dots:</td><td> <select name=\"colhel\">";
+    colorNum = settings.getColHel();
+    for(uint8_t j = 0; j <= COLOR_COUNT; j++){
+      message += "<option value=\"" +String(j) + "\"";
+      if (colorNum == j) message += " selected";
+      message += ">";
+      message += String(FPSTR(sColorStr[j])) + "</option>";
+    }
+    message += "</select></td></tr>";
+    // ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+  // ------------------------------------------------------------------------  
+    message += "<tr><td>Lat:</td><td><input type=\"text\" size=\"20\" name=\"lat\" value=\"";
+    settings.getLat(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter Lat ...\">";
+    message += "<tr><td>Long:</td><td><input type=\"text\" size=\"20\" name=\"lon\" value=\"";
+    settings.getLon(location, sizeof(location));
+    message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR-1) + "}\" placeholder=\"Enter Lat ...\">";
+// ------------------------------------------------------------------------
   message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-  // ------------------------------------------------------------------------
-  message += "<tr><td>Lat:</td><td><input type=\"text\" size=\"20\" name=\"lat\" value=\"";
-  settings.getLat(location, sizeof(location));
-  message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR - 1) + "}\" placeholder=\"Enter Lat ...\">";
-  message += "<tr><td>Long:</td><td><input type=\"text\" size=\"20\" name=\"lon\" value=\"";
-  settings.getLon(location, sizeof(location));
-  message += String(location) + "\" pattern=\"[\\x20-\\x7e]{0," + String(LEN_LOC_STR - 1) + "}\" placeholder=\"Enter Lat ...\">";
-  // ------------------------------------------------------------------------
-  message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-  // ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
   message += "<tr><th>Update: </th><th><input type=\"radio\" name=\"UpdateStable\" value=\"1\"";
-  if (settings.getUpdateStable()) message += " checked";
-  message += "> Stable ";
-  // ------------------------------------------------------------------------
-  message += "<input type=\"hidden\" name=\"UpdateStable_old\" value=\"";
-  message += String(settings.getUpdateStable());
-  message += "\" placeholder=\"Enter NTP Server ...\">";
-  // ------------------------------------------------------------------------
-  message += " <br><input type=\"radio\" name=\"UpdateStable\" value=\"0\"";
-  if (!settings.getUpdateStable()) message += " checked";
-  message += "> Unstable</th></tr>";
-  // ------------------------------------------------------------------------
+    if (settings.getUpdateStable()) message += " checked";
+    message += "> Stable ";
+// ------------------------------------------------------------------------
+    message += "<input type=\"hidden\" name=\"UpdateStable_old\" value=\"";
+    message += String(settings.getUpdateStable());
+    message += "\" placeholder=\"Enter NTP Server ...\">";
+// ------------------------------------------------------------------------    
+    message += " <br><input type=\"radio\" name=\"UpdateStable\" value=\"0\"";
+    if (!settings.getUpdateStable()) message += " checked";
+    message += "> Unstable</th></tr>";
+// ------------------------------------------------------------------------
+    
 
-
-
-  message += "</table>";
-  message += "<br><br><button title=\"Save Settings.\"><i class=\"fa fa-check\"></i></button>";
+    
+    message += "</table>";
+    message += "<br><br><button title=\"Save Settings.\"><i class=\"fa fa-check\"></i></button>";
   message += "</form>";
   return message;
-
+  
 }
 
 void handleSettings()
 {
   //Handler for the rooth path
+ 
+    String message = htmlTop("Settings");
 
-  String message = htmlTop("Settings");
-
-  message += settingshtml();
-
-  message += htmlButton();
+    message +=settingshtml();
+  
+    message += htmlButton();
 
   esp8266WebServer.send(200, "text/html", message);
 
@@ -1351,11 +1450,11 @@ void handleReset()
   startShow(10); //Orange
   callBack();
   esp8266WebServer.send(200, "text/plain", "By...");
-
+  
   delay(1000);
   callRoot();
   ESP.restart();
-
+  
 }
 
 void handleFactoryReset()
@@ -1364,18 +1463,18 @@ void handleFactoryReset()
   startShow(10); //Orange
   callBack();
   settings.resetToDefault();
-
+  
   ESP.restart();
 }
 
 void handleWiFiReset()
 {
   esp8266WebServer.send(200, "text/plain", "OK.");
-
+  
   WiFi.disconnect(true);
-  WiFiManager wifiManager;
-  wifiManager.resetSettings();
+      WiFiManager wifiManager;
+      wifiManager.resetSettings();
 
-
+ 
   ESP.restart();
 }
