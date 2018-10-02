@@ -32,7 +32,7 @@
 #include "Settings.h"
 #include "Timezones.h"
 
-
+#define FirmewareVersion  "20180930"
 
 /******************************************************************************
   Init.
@@ -51,7 +51,7 @@ LDR ldr(LDR_SIGNAL);
 
 // ------------------ Globale Variablen ---------------------
 // Die gelesene Zeit...
-int hours, minutes, Moonphase, seconds,WeatherTemperatur,WeatherHumidity;
+int Brightness, hours, minutes, Moonphase, seconds,WeatherTemperatur,WeatherHumidity;
 bool startled, WeatherTemperatur_negative;
 String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon,WeatherName,WeatherTime;
 char location[LEN_LOC_STR];
@@ -140,7 +140,7 @@ getntp();
 }
 //setze milli 
 milli_befor = millis();
-getMoonphase();
+getMoonphase(year(), month(), day());
 getUpdateInfo();
 getWeatherTemperature();
 setupWebServer();
@@ -153,6 +153,8 @@ modus = "clock";
 
 void loop() {
   long milli =0;
+
+  ledBrightness();
 
   
 if(second() == second_befor)
@@ -183,7 +185,7 @@ getntp();
 
 //getUpdateInfo();
 
-getMoonphase();
+getMoonphase(year(), month(), day());
 
 getWeatherTemperature();
 
@@ -451,14 +453,27 @@ while(i <= startled+leds) {
 }
   
 }
+
+void ledBrightness()
+{
+ int Bright = ldr.value();
+ 
+ Bright = ((100 - Bright) * 2.55 )+75;
+
+ if(Bright >= 255)
+ {
+  Bright = 255;
+ }
+Brightness = Bright;
+strip.setBrightness(Brightness);
+ 
+}
 /******************************************************************************
   Get Moonphase
 ******************************************************************************/
-int getMoonphase()
+int getMoonphase(int y, int m, int d)
 {
-  int y = year(); 
-  int m = month();
-  int d = day();
+
   int b;
   int c;
   int e;
@@ -489,6 +504,7 @@ void show_Moonphase()
         case 0 :
         start_led = 0;
         stop_led = 0;
+        
         break;
     
         case 1 :
@@ -512,28 +528,35 @@ void show_Moonphase()
         break;
     
         case 5 :
+        start_led = 30;
+        stop_led = 60;
+        break;
+    
+        case 6 :
         start_led = 35;
         stop_led = 55;
         break;
     
-        case 6 :
+        case 7 :
         start_led = 40;
         stop_led = 50;
         break;
-    
-        case 7 :
-        start_led = 43;
-        stop_led = 47;
-        break;
       }
 
-      
-    while(stop_led >= start_led)
-    {
-    strip.setPixelColor(start_led, strip.Color(255, 255, 255));
-   
-    
-    start_led++;
+    if( Moonphase != 0)
+    { 
+        while(stop_led >= start_led)
+        {
+        strip.setPixelColor(start_led, strip.Color(127, 127, 127));
+        start_led++;
+        }
+    }else{
+        //Neumond Anzeige
+            for(int i=0; i<60; i += 3) {
+       
+        strip.setPixelColor(i, strip.Color(127, 127, 127));
+        
+      }
     }
     strip.show(); 
   
@@ -1034,6 +1057,7 @@ void setupWebServer()
   esp8266WebServer.on("/modus", []() {handleModus();});//; callBack();});
   esp8266WebServer.on("/moon", []() {handleMoon();});//; callBack();});
   esp8266WebServer.on("/temp", []() {handleTemp();});//; callBack();});
+  esp8266WebServer.on("/brightness", []() {handleBrightness();});//; callBack();});
   esp8266WebServer.on("/wifiReset", handleWiFiReset);
   esp8266WebServer.on("/reset", handleReset);
   
@@ -1059,7 +1083,7 @@ String htmlTop(String page)
   message += "</head>";
   message += "<body style=\"height: 100%;\">";
    message += "<span style=\"color:white\">";
-  message += "<table style=\"height: 100%; ; margin-left: auto; margin-right: auto; width: 350px; background-color: #53bbf4;\"><tbody><tr><td style=\"height: 10%;\">";
+  message += "<table style=\"height: 100%; ; margin-left: auto; margin-right: auto; width: 425px; background-color: #53bbf4;\"><tbody><tr><td style=\"height: 10%;\">";
 
 //https://fontawesome.com/v4.7.0/icons/
   
@@ -1135,7 +1159,7 @@ void handleRoot()
   }else{
     message +="deactive ";
   }
-  message += String(ldr.value()) + "  %(min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
+  message += String(ldr.value()) + " % " + String(Brightness) +" LED (min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
   message += "<br>Help Dots every: "+String(settings.getldrDot())+" Pixels, by "+String(settings.getBrightness())+"% Brightness." ;
   message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
 
@@ -1158,7 +1182,7 @@ message += "<br>Humidity: "+ String(WeatherHumidity)+" &#37;";
 //message += "- <img src=\"http://openweathermap.org/img/w/"+String(WeatherIcon)+".png\" >"; 
  String l_line = WeatherTime;
   time_t t = l_line.toInt(); 
-//message += "<br>"+String(hour(t) )+ ":" + String(minute(t));
+message += "<br><br>Moonphase: "+String(Moonphase) +" -  "+ day()+ "." + month()+ "." + year();
   message += "<br><br>Setting Version: "+String(settings.getSettingVersion());
   
   
@@ -1181,6 +1205,13 @@ void handleMoon()
     esp8266WebServer.send(200, "text/html", String(WeatherTemperatur)); 
 }
 
+void handleBrightness()
+{
+  strip.setBrightness(esp8266WebServer.arg("brightness").toInt());
+
+    esp8266WebServer.send(200, "text/html", String(WeatherTemperatur)); 
+  
+}
 void handleupdates()
 {
 

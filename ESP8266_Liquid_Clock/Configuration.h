@@ -21,7 +21,7 @@
 
 #define DEBUG
 
-#define FirmewareVersion  "20180916"
+
 
 // ------------------ Pixel Einstellungen ---------------------
 
@@ -153,5 +153,3 @@
 
 
 #endif
-
-
