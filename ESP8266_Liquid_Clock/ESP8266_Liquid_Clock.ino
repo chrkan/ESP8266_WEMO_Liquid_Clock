@@ -32,7 +32,7 @@
 #include "Settings.h"
 #include "Timezones.h"
 
-#define FirmewareVersion  "20180930"
+#define FirmewareVersion  "20181002"
 
 /******************************************************************************
   Init.
