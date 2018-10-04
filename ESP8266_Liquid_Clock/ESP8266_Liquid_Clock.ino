@@ -32,7 +32,7 @@
 #include "Settings.h"
 #include "Timezones.h"
 
-#define FirmewareVersion  "20181002"
+#define FirmewareVersion  "20181004"
 
 /******************************************************************************
   Init.
@@ -154,8 +154,6 @@ modus = "clock";
 void loop() {
   long milli =0;
 
-  ledBrightness();
-
   
 if(second() == second_befor)
 {
@@ -169,6 +167,34 @@ milli = millis() - milli_befor;
   second_befor = second();
   //setze milli_befor auf aktuelle millis
   milli_befor = millis();
+
+      if(second() % 5== 0  )
+    {
+      ledBrightness();
+
+    if(modus == "clock")
+    {
+  clearStrip();
+  int color = settings.getColHel();
+  // bei Dunkelheit kleine Hilfslichter einschalten...
+
+  
+    if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
+      for(int i=0; i<60; i += settings.getldrDot()) {
+        if(modus == "clock")
+        {
+        strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+        }
+      }
+    }
+  
+    }
+
+
+      
+    }
+
+    
 }
 
 
@@ -237,21 +263,11 @@ wlan(!settings.getwlan());
     if(modus == "clock")
     {
   clearStrip();
-  int color = settings.getColHel();
-  // bei Dunkelheit kleine Hilfslichter einschalten...
-    if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
-      for(int i=0; i<60; i += settings.getldrDot()) {
-        if(modus == "clock")
-        {
-        strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
-        }
-      }
-    }
-    
+  
        // Positionen berechnen und ausgeben...
    // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
    double doubleDisplaySeconds = (double) second() + (milli * 0.001);
-   color = settings.getColSec();
+   int color = settings.getColSec();
     setFloatPixelColor(doubleDisplaySeconds, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
     
     color = settings.getColMin();
