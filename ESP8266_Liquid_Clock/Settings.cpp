@@ -148,6 +148,34 @@ int16_t Settings::getSyncMinute() {
   return mySettings.SyncMinute;
 }
 
+void Settings::setLdrSync(int16_t LdrSync) {
+  mySettings.LdrSync = LdrSync;
+}
+
+int16_t Settings::getLdrSync() {
+  return mySettings.LdrSync;
+}
+
+void Settings::setLdrLedOfset(int16_t LdrLedOfset) {
+  mySettings.LdrLedOfset = LdrLedOfset;
+}
+
+int16_t Settings::getLdrLedOfset() {
+  return mySettings.LdrLedOfset;
+}
+
+boolean Settings::getAutoShow() {
+  return mySettings.AutoShow;
+}
+
+void Settings::setAutoShow(bool set) {
+  mySettings.AutoShow = set;
+}
+
+void Settings::toggleAutoShow() {
+  mySettings.AutoShow = !mySettings.AutoShow;
+}
+
 // Set all defaults.
 void Settings::resetToDefault() {
   Serial.println("*** Settings set to defaults in EEPROM. ***");
@@ -175,6 +203,9 @@ void Settings::resetToDefault() {
  tmp = sizeof(mySettings.Lon);
   memcpy(mySettings.Lon, charLon, min(tmp, 10));
   mySettings.SyncMinute = DEFAULT_SyncMinute;
+  mySettings.LdrSync = LDR_SYNC;
+  mySettings.LdrLedOfset = DEFAULT_LDR_OFSET;
+  mySettings.AutoShow = DEFAULT_AutoShow;
   saveToEEPROM();
 }
 

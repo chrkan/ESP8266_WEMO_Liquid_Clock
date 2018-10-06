@@ -38,7 +38,7 @@
 #define DEFAULT_Lat "50.18233560"
 #define DEFAULT_Lon "8.73948050"
 
-#define SETTINGS_MAGIC_NUMBER 0x08
+#define SETTINGS_MAGIC_NUMBER 0x12
 #define SETTINGS_SettingVersion 0
 
 /* ------------------ Colors --------------------- */
@@ -120,7 +120,7 @@
 #define OTA_PASS "1234"
 #define SHOW_IP
 #define DEFAULT_wlan true //false = Wlan IMMER An, true = Wlan wird nach NTP Abfrage beendet
-#define DEFAULT_SyncMinute 30
+#define DEFAULT_SyncMinute 15
 
 
 /* ------------------ LDR --------------------- */
@@ -135,6 +135,9 @@
   #define LDR_AUTOSCALE
   #define LDR_MANUAL_MIN 0
   #define LDR_MANUAL_MAX 1023
+  #define LDR_SYNC 5
+ 
+  
 /*
  * Die Menge der Werte fuer die Glaettung. Mehr Werte bringen bessere Ergebnisse aber
  * brauchen auch mehr Zeit (und mehr Speicher! / Gleitender Mittelwert)
@@ -145,6 +148,10 @@
   #define DEFAULT_LDR_Status true
   #define DEFAULT_LDR_LED 15
   #define DEFAULT_LDR_Brightness 50
+  #define DEFAULT_LDR_OFSET 10
+
+
+  #define DEFAULT_AutoShow true;
   
 #define SYSLOGSERVER
 //------------------

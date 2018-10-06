@@ -32,7 +32,7 @@
 #include "Settings.h"
 #include "Timezones.h"
 
-#define FirmewareVersion  "20181004"
+#define FirmewareVersion  "20181006"
 
 /******************************************************************************
   Init.
@@ -144,6 +144,9 @@ getMoonphase(year(), month(), day());
 getUpdateInfo();
 getWeatherTemperature();
 setupWebServer();
+
+show_automatic();
+
 modus = "clock";
 }
 
@@ -168,7 +171,7 @@ milli = millis() - milli_befor;
   //setze milli_befor auf aktuelle millis
   milli_befor = millis();
 
-      if(second() % 5== 0  )
+      if(second() % settings.getLdrSync() == 0  )
     {
       ledBrightness();
 
@@ -209,11 +212,13 @@ wlan(true);
 
 getntp();
 
-//getUpdateInfo();
+getUpdateInfo();
 
 getMoonphase(year(), month(), day());
 
 getWeatherTemperature();
+
+show_automatic();
 
 wlan(!settings.getwlan());
  }
@@ -425,7 +430,7 @@ void rainbowCycle(uint8_t wait) {
 
 //Theatre-style crawling lights.
 void theaterChase(uint32_t c, uint8_t wait) {
-  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
+  for (int j=0; j<20; j++) {  //do 10 cycles of chasing
     for (int q=0; q < 3; q++) {
       for (int i=0; i < strip.numPixels(); i=i+3) {
         strip.setPixelColor(i+q, c);    //turn every third pixel on
@@ -474,7 +479,7 @@ void ledBrightness()
 {
  int Bright = ldr.value();
  
- Bright = ((100 - Bright) * 2.55 )+75;
+ Bright = ((100 - Bright) * 2.55 )+ settings.getLdrLedOfset();
 
  if(Bright >= 255)
  {
@@ -778,6 +783,28 @@ setFloatPixelColor(rgbWeatherTemperatur, rot,gruen,blau);
 strip.show();
 } 
 
+void show_automatic()
+{
+  if(settings.getAutoShow() == true)
+  {
+            /* ------------------ New Update  --------------------- */
+        if (updateInfo > String(FirmewareVersion))
+        {
+          theaterChase(strip.Color(0, 0, 255), 50);
+        }
+      
+              show_WeatherTemperatur();
+          
+      delay(20000); 
+      
+            show_Moonphase();
+      delay(20000); 
+  
+  }
+
+  
+}
+
  /* ------------------ NTP --------------------- */
 
 void getntp()
@@ -929,6 +956,7 @@ void getUpdateInfo()
   Serial.print("connecting to ");
   Serial.println(UPDATE_SERVER);
   if (!client.connect(UPDATE_SERVER, 443)) {
+    updateInfo = "connection failed";
     Serial.println("connection failed");
     return;
   }
@@ -1177,6 +1205,9 @@ void handleRoot()
   }
   message += String(ldr.value()) + " % " + String(Brightness) +" LED (min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
   message += "<br>Help Dots every: "+String(settings.getldrDot())+" Pixels, by "+String(settings.getBrightness())+"% Brightness." ;
+
+
+  
   message += "<br><br>NTP Server: "+ String(settings.getntpServer(location, sizeof(location)));
 
   if (updateInfo > String(FirmewareVersion))
@@ -1261,10 +1292,22 @@ if(esp8266WebServer.arg("DEFAULT_LDR_Status") == "1")
   
   settings.setUseLdr(false);
 }
+if(esp8266WebServer.arg("autoshow") == "1") 
+{ 
+  settings.setAutoShow(true);
+}else{
+  
+  settings.setAutoShow(false);
+}
+
 
 settings.setBrightness(esp8266WebServer.arg("br").toInt());
 
 settings.setldrDot(esp8266WebServer.arg("ldrdots").toInt());
+
+settings.setLdrSync(esp8266WebServer.arg("ldrsync").toInt());
+
+settings.setLdrLedOfset(esp8266WebServer.arg("ldrledofset").toInt());
 
 settings.setSyncMinute(esp8266WebServer.arg("SyncMinute").toInt());
 
@@ -1330,8 +1373,6 @@ String message = "<form action=\"/commitSettings\">";
     message += "> off</th></tr>";
 
  // ------------------------------------------------------------------------
-    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-// ------------------------------------------------------------------------    
     message += "<tr><td>Wlan Sync  every </td><td><select name=\"SyncMinute\">";
     message += "<option value=\""+String(settings.getSyncMinute())+"\" selected>"+String(settings.getSyncMinute())+"</option>";
     message += "<option value=\"5\">5</option>";
@@ -1341,9 +1382,18 @@ String message = "<form action=\"/commitSettings\">";
     message += "</select> Minute.</td></tr>";
 
  // ------------------------------------------------------------------------
+    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>"; 
+// ------------------------------------------------------------------------   
+    message += "<tr><td>Auto Show at Wlan Sync:</th><th><input type=\"radio\" name=\"autoshow\" value=\"1\"";
+    if (settings.getAutoShow()) message += " checked";
+    message += "> on ";
+    message += " <input type=\"radio\" name=\"autoshow\" value=\"0\"";
+    if (!settings.getAutoShow()) message += " checked";
+    message += "> off</th></tr>";
+ // ------------------------------------------------------------------------
     message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
-// ------------------------------------------------------------------------    
-// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------  
+    
   message += "<tr><td>";
   message += "Night off:";
   message += "</td><td>";
@@ -1385,8 +1435,28 @@ message += "<tr><td>Help Dots by </td><td><select name=\"br\">";
     message += String(i) + "</option>";
   }
   message += "</select> %  LDR</td></tr>";
-// ------------------------------------------------------------------------
-    message += "<tr><th>&nbsp;</th><th>&nbsp;</th></tr>";
+ // ------------------------------------------------------------------------ 
+  message += "<tr><td>LDR Sync</td><td><select name=\"ldrsync\">";
+  for (int i = 1; i <= 60; i += 1)
+  {
+    message += "<option value=\"" + String(i) + "\"";
+    if (i == settings.getLdrSync()) message += " selected";
+    message += ">";
+    message += String(i) + "</option>";
+  }
+  message += "</select> Seconds</td></tr>";
+
+ // ------------------------------------------------------------------------
+message += "<tr><td>LDR LED Ofset</td><td><select name=\"ldrledofset\">";
+  for (int i = 0; i <= 100; i += 10)
+  {
+    message += "<option value=\"" + String(i) + "\"";
+    if (i == settings.getLdrLedOfset()) message += " selected";
+    message += ">";
+    message += String(i) + "</option>";
+  }
+  message += "</select> % </td></tr>";
+
 // ------------------------------------------------------------------------    
     message += "<tr><td>Help Dots every </td><td><select name=\"ldrdots\">";
     message += "<option value=\""+String(settings.getldrDot())+"\" selected>"+String(settings.getldrDot())+"</option>";

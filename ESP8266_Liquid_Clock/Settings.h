@@ -74,6 +74,16 @@ public:
   int16_t getSyncMinute();
   void setSyncMinute(int16_t SyncMinute);
 
+  int16_t getLdrSync();
+  void setLdrSync(int16_t LdrSync);
+  
+  int16_t getLdrLedOfset();
+  void setLdrLedOfset(int16_t LdrLedOfset);
+
+  boolean getAutoShow();
+  void setAutoShow(bool set);
+  void toggleAutoShow();
+
 private:
   struct MySettings {
     uint8_t magicNumber;
@@ -93,6 +103,9 @@ private:
     char Lat[LEN_LOC_STR];
     char Lon[LEN_LOC_STR];
     int16_t SyncMinute;
+    int16_t LdrSync;
+    int16_t LdrLedOfset;
+    boolean AutoShow;
   } mySettings;
 
   void loadFromEEPROM();
