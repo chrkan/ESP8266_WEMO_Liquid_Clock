@@ -32,7 +32,7 @@
 #include "Settings.h"
 #include "Timezones.h"
 
-#define FirmewareVersion  "20181006"
+#define FirmewareVersion  "20181022"
 
 /******************************************************************************
   Init.
@@ -51,11 +51,15 @@ LDR ldr(LDR_SIGNAL);
 
 // ------------------ Globale Variablen ---------------------
 // Die gelesene Zeit...
-int Brightness, hours, minutes, Moonphase, seconds,WeatherTemperatur,WeatherHumidity;
+int Brightness, clockInfoColor = 0,hours, minutes, Moonphase, seconds,WeatherTemperatur,WeatherHumidity;
 bool startled, WeatherTemperatur_negative;
 String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon,WeatherName,WeatherTime;
 char location[LEN_LOC_STR];
 unsigned long second_befor, milli_befor;
+
+
+
+
 
 
 // ------------------ Syslog Einstellungen ---------------------
@@ -265,9 +269,17 @@ wlan(!settings.getwlan());
 
 
 // nightmode/daymode.
-    if(modus == "clock")
+    if(modus == "clock" || modus == "clockInfo")
     {
   clearStrip();
+  if( modus == "clockInfo")
+  {
+int  ic=0;
+    while(ic<strip.numPixels()) {
+    strip.setPixelColor(ic, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
+    ic = ic +5;
+    }
+  }
   
        // Positionen berechnen und ausgeben...
    // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
@@ -489,6 +501,8 @@ Brightness = Bright;
 strip.setBrightness(Brightness);
  
 }
+
+
 /******************************************************************************
   Get Moonphase
 ******************************************************************************/
@@ -573,7 +587,7 @@ void show_Moonphase()
         }
     }else{
         //Neumond Anzeige
-            for(int i=0; i<60; i += 3) {
+            for(int i=0; i<60; i += 10) {
        
         strip.setPixelColor(i, strip.Color(127, 127, 127));
         
@@ -673,7 +687,7 @@ String url = "/data/2.5/weather?lat=";
 
   void show_WeatherTemperatur()
     {
-       
+       clearStrip();
         int i=0;
         
         int tmp_WeatherTemperatur = WeatherTemperatur;
@@ -1148,7 +1162,7 @@ String htmlButton()
 {
   String message = "</td></tr><tr><td  style=\"height: 10%;\">";
  message += "________________________________<br>";
-  message += "ckany 2018<br>";
+  message += "<a href=\"https://github.com/chrkan/ESP8266_WEMO_Liquid_Clock\">ckany 2018</a><br>";
   
   message+="</td></tr></tbody></table>     ";
   message += "</span>";
@@ -1268,6 +1282,7 @@ void handleupdates()
 void handleModus()
 {
 modus = String(esp8266WebServer.arg("modus"));
+clockInfoColor = esp8266WebServer.arg("color").toInt();
 callRoot();
     esp8266WebServer.send(200, "text/html", modus);  
     
