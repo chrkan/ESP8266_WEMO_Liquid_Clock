@@ -275,6 +275,8 @@ wlan(!settings.getwlan());
   if( modus == "clockInfo")
   {
 int  ic=0;
+
+//http://IP-Adresse/modus?color=1&modus=clockInfo
     while(ic<strip.numPixels()) {
     strip.setPixelColor(ic, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
     ic = ic +5;
