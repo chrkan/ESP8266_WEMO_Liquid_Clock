@@ -182,18 +182,7 @@ milli = millis() - milli_befor;
     if(modus == "clock")
     {
   clearStrip();
-  int color = settings.getColHel();
-  // bei Dunkelheit kleine Hilfslichter einschalten...
 
-  
-    if(ldr.value() > settings.getBrightness() && settings.getUseLdr()) {
-      for(int i=0; i<60; i += settings.getldrDot()) {
-        if(modus == "clock")
-        {
-        strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
-        }
-      }
-    }
   
     }
 
@@ -269,24 +258,45 @@ wlan(!settings.getwlan());
 
 
 // nightmode/daymode.
-    if(modus == "clock" || modus == "clockInfo")
+    if(modus == "clock" || modus == "clockInfo" || modus == "clockInfo2")
     {
   clearStrip();
+
+  int color = settings.getColHel();
+  // bei Dunkelheit kleine Hilfslichter einschalten...
+
+  
+    if(ldr.value() > settings.getBrightness()) {
+    
+      for(int i=0; i<60; i += settings.getldrDot()) {
+        if(modus == "clock")
+        {
+        strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+        }
+      }
+    }
+
+
+
+  
   if( modus == "clockInfo")
   {
-int  ic=0;
 
-//http://IP-Adresse/modus?color=1&modus=clockInfo
-    while(ic<strip.numPixels()) {
-    strip.setPixelColor(ic, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
-    ic = ic +5;
-    }
+
+//http://IP-Adresse/modus?color=14&modus=clockInfo
+    for(int i=0; i<60; i += settings.getldrDot()) {
+       
+        strip.setPixelColor(i, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
+       
+      }
   }
+
+ 
   
        // Positionen berechnen und ausgeben...
    // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
    double doubleDisplaySeconds = (double) second() + (milli * 0.001);
-   int color = settings.getColSec();
+  color = settings.getColSec();
     setFloatPixelColor(doubleDisplaySeconds, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
     
     color = settings.getColMin();
@@ -1285,8 +1295,13 @@ void handleModus()
 {
 modus = String(esp8266WebServer.arg("modus"));
 clockInfoColor = esp8266WebServer.arg("color").toInt();
+
+if(modus=="clockInfo")
+{
+  colorWipe(strip.Color(defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue), 150);
+}
+
 callRoot();
-    esp8266WebServer.send(200, "text/html", modus);  
     
 }
 void handleCommitSettings()
