@@ -19,7 +19,7 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>   
 
-#include <Syslog.h>
+//#include <Syslog.h>
 #include <TimeLib.h>
 #include <Timezone.h>
 
@@ -32,7 +32,7 @@
 #include "Settings.h"
 #include "Timezones.h"
 
-#define FirmewareVersion  "20181022"
+#define FirmewareVersion  "20181028"
 
 /******************************************************************************
   Init.
@@ -53,7 +53,7 @@ LDR ldr(LDR_SIGNAL);
 // Die gelesene Zeit...
 int Brightness, clockInfoColor = 0,hours, minutes, Moonphase, seconds,WeatherTemperatur,WeatherHumidity;
 bool startled, WeatherTemperatur_negative;
-String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon,WeatherName,WeatherTime;
+String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon,WeatherName,WeatherTime,Info0,Info15,Info30,Info45;
 char location[LEN_LOC_STR];
 unsigned long second_befor, milli_befor;
 
@@ -65,7 +65,7 @@ unsigned long second_befor, milli_befor;
 // ------------------ Syslog Einstellungen ---------------------
 #ifdef SYSLOGSERVER
 WiFiUDP wifiUdp;
-Syslog syslog(wifiUdp, SYSLOGSERVER_SERVER, SYSLOGSERVER_PORT, HOSTNAME, "QLOCKWORK2", LOG_INFO);
+//Syslog syslog(wifiUdp, SYSLOGSERVER_SERVER, SYSLOGSERVER_PORT, HOSTNAME, "QLOCKWORK2", LOG_INFO);
 #endif
 
 // ------------------ Web Einstellungen ---------------------
@@ -138,7 +138,7 @@ getntp();
 
 #ifdef SYSLOGSERVER
     Serial.println("Starting syslog.");
-    syslog.log(LOG_INFO, ";#;dateTime;roomWeatherTemperature;roomWeatherHumidity;outdoorWeatherTemperature;outdoorWeatherHumidity;outdoorCode;ldrValue;errorCounterNtp;errorCounterDht;errorCounterYahoo;freeHeapSize;upTime");
+    //syslog.log(LOG_INFO, ";#;dateTime;roomWeatherTemperature;roomWeatherHumidity;outdoorWeatherTemperature;outdoorWeatherHumidity;outdoorCode;ldrValue;errorCounterNtp;errorCounterDht;errorCounterYahoo;freeHeapSize;upTime");
 #endif
   
 }
@@ -151,7 +151,7 @@ setupWebServer();
 
 show_automatic();
 
-modus = "clock";
+modus = "clockInfo";
 }
 
 /******************************************************************************
@@ -269,29 +269,14 @@ wlan(!settings.getwlan());
     if(ldr.value() > settings.getBrightness()) {
     
       for(int i=0; i<60; i += settings.getldrDot()) {
-        if(modus == "clock")
+        if(modus == "clock" || modus == "clockInfo")
         {
         strip.setPixelColor(i, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
         }
       }
     }
 
-
-
   
-  if( modus == "clockInfo")
-  {
-
-
-//http://IP-Adresse/modus?color=14&modus=clockInfo
-    for(int i=0; i<60; i += settings.getldrDot()) {
-       
-        strip.setPixelColor(i, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
-       
-      }
-  }
-
- 
   
        // Positionen berechnen und ausgeben...
    // double doubleDisplaySeconds = (double) second() + ((millis() - milliSecondsSyncPoint) / (double) syncTimeInMillis);
@@ -306,7 +291,92 @@ wlan(!settings.getwlan());
     color = settings.getColHou();
     double doubleDisplayHours = doubleMap((double) (hours * 60.0 + minutes), 0.0, 12.0 * 60.0, 0.0, 60.0);
     setFloatPixelColor(doubleDisplayHours, defaultColors[color].red,defaultColors[color].green,defaultColors[color].blue);
+
+
+if( modus == "clockInfo")
+  {
+    //http://IP-Adresse/modus?modus=clockInfo&Info0=on
+    //modus?modus=clockInfo&color=17&Info0=on&Info15=on&Info30=on&Info45=on
+
+
     
+      int colorh = settings.getColHou();
+      int colorm = settings.getColMin();
+       if(Info0=="on")
+       {
+            if(second()%2==0)
+            {
+              if(hours==0)
+                  strip.setPixelColor(0, defaultColors[colorh].red,defaultColors[colorh].green,defaultColors[colorh].blue);
+              else if(minutes == 0)
+                  strip.setPixelColor(0, defaultColors[colorm].red,defaultColors[colorm].green,defaultColors[colorm].blue);
+              else
+                  strip.setPixelColor(0, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
+            }
+            else
+              strip.setPixelColor(0, 0,0,0);
+       }
+
+       if(Info15=="on")
+       {
+            if(second()%2==0)
+            {
+              if(hours==3)
+                strip.setPixelColor(15, defaultColors[colorh].red,defaultColors[colorh].green,defaultColors[colorh].blue);
+              else if(minutes == 15)
+                  strip.setPixelColor(15, defaultColors[colorm].red,defaultColors[colorm].green,defaultColors[colorm].blue);
+              else
+                strip.setPixelColor(15, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
+            }
+            else
+              strip.setPixelColor(15, 0,0,0);
+       }
+
+       if(Info30=="on")
+       {
+            if(second()%2==0)
+            {
+                if(hours==6)
+                  strip.setPixelColor(30, defaultColors[colorh].red,defaultColors[colorh].green,defaultColors[colorh].blue);
+                else if(minutes == 30)
+                  strip.setPixelColor(30, defaultColors[colorm].red,defaultColors[colorm].green,defaultColors[colorm].blue);
+                else
+                  strip.setPixelColor(30, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
+            }
+            else
+              strip.setPixelColor(30, 0,0,0);
+       }
+
+       if(Info45=="on")
+       {
+            if(second()%2==0)
+            {
+                if(hours==9)
+                  strip.setPixelColor(45, defaultColors[colorh].red,defaultColors[colorh].green,defaultColors[colorh].blue);
+                else if(minutes == 45)
+                  strip.setPixelColor(45, defaultColors[colorm].red,defaultColors[colorm].green,defaultColors[colorm].blue);
+                else
+                  strip.setPixelColor(45, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
+            }
+            else
+              strip.setPixelColor(45, 0,0,0);
+       }
+
+       
+       
+  
+  }
+  if( modus == "clockInfo2")
+  {
+
+
+//http://IP-Adresse/modus?color=14&modus=clockInfo2
+    for(int i=0; i<60; i += settings.getldrDot()) {
+       
+        strip.setPixelColor(i, defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue);
+       
+      }
+  }
     strip.show();
     }
 
@@ -819,13 +889,14 @@ void show_automatic()
           theaterChase(strip.Color(0, 0, 255), 50);
         }
       
-              show_WeatherTemperatur();
+      /*
+      show_WeatherTemperatur();
           
       delay(20000); 
       
-            show_Moonphase();
+      show_Moonphase();
       delay(20000); 
-  
+      */
   }
 
   
@@ -1293,12 +1364,21 @@ void handleupdates()
 }
 void handleModus()
 {
+  
 modus = String(esp8266WebServer.arg("modus"));
 clockInfoColor = esp8266WebServer.arg("color").toInt();
+if(esp8266WebServer.arg("Info0") != NULL)
+  Info0=esp8266WebServer.arg("Info0");
+if(esp8266WebServer.arg("Info15") != NULL)
+  Info15=esp8266WebServer.arg("Info15");
+if(esp8266WebServer.arg("Info30") != NULL)
+  Info30=esp8266WebServer.arg("Info30");
+if(esp8266WebServer.arg("Info45") != NULL)
+  Info45=esp8266WebServer.arg("Info45");
 
 if(modus=="clockInfo")
 {
-  colorWipe(strip.Color(defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue), 150);
+  colorWipe(strip.Color(defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue), 10);
 }
 
 callRoot();
