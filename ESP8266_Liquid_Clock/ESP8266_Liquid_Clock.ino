@@ -12,12 +12,12 @@
 #include <ArduinoHttpClient.h>
 #include <Adafruit_NeoPixel.h>
 
-
+#include <ESP8266WiFi.h>   
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266httpUpdate.h>    
 #include <ESP8266WebServer.h>
-#include <ESP8266WiFi.h>   
+
 
 //#include <Syslog.h>
 #include <TimeLib.h>
@@ -56,6 +56,9 @@ bool startled, WeatherTemperatur_negative;
 String updateInfo="0", modus = "clock",WeatherStatus,WeatherIcon,WeatherName,WeatherTime,Info0,Info15,Info30,Info45;
 char location[LEN_LOC_STR];
 unsigned long second_befor, milli_befor;
+uint8_t reset;
+uint8_t i;  // counter
+uint8_t j;  // counter
 
 
 
@@ -399,6 +402,17 @@ if( modus == "clockInfo")
     startShow(0); //blank
     clearStrip();
     }
+
+
+   if(modus =="northernlight")
+   {
+    northernlight();
+   }
+//http://IP-Adresse/modus?modus=fire
+   if(modus =="fire")
+   {
+    fire();
+   }
   
 }
 
@@ -737,24 +751,34 @@ String url = "/data/2.5/weather?lat=";
   // Allocate JsonBuffer
   // Use arduinojson.org/assistant to compute the capacity.
   const size_t capacity = JSON_OBJECT_SIZE(3) + JSON_ARRAY_SIZE(2) + 60;
-  DynamicJsonBuffer jsonBuffer(capacity);
+  //DynamicJsonBuffer jsonBuffer(capacity);
+  DynamicJsonDocument doc(capacity);
+
 
   // Parse JSON object
-  JsonObject& root = jsonBuffer.parseObject(client);
-  if (!root.success()) {
-    Serial.println(F("Parsing failed!"));
-     WeatherStatus += "Parsing failed!";
+ // JsonObject& root = jsonBuffer.parseObject(client);
+ // if (!root.success()) {
+  //  Serial.println(F("Parsing failed!"));
+  //   WeatherStatus += "Parsing failed!";
+  //  return;
+  //}
+  auto error = deserializeJson(doc, client);
+if (error) {
+    Serial.print(F("deserializeJson() failed with code "));
+    Serial.println(error.c_str());
+    WeatherStatus += "Parsing failed!";
     return;
-  }
+}
+
 
   // Extract values
   Serial.println(F("Response:"));
    WeatherStatus += "Response:";
-   WeatherIcon = root["weather"]["0"]["icon"].as<String>();
-   WeatherTemperatur = root["main"]["temp"].as<int>();
-   WeatherHumidity = root["main"]["humidity"].as<int>();
-   WeatherName = root["name"].as<String>();
-   WeatherTime = root["dt"].as<String>();
+   WeatherIcon = doc["weather"]["0"]["icon"].as<String>();
+   WeatherTemperatur = doc["main"]["temp"].as<int>();
+   WeatherHumidity = doc["main"]["humidity"].as<int>();
+   WeatherName = doc["name"].as<String>();
+   WeatherTime = doc["dt"].as<String>();
 
   
 
@@ -901,6 +925,147 @@ void show_automatic()
 
   
 }
+
+void fire()
+{
+int r = 255;
+int g = 96;
+int b = 12;
+
+for(int x = 0; x <60; x++)
+{
+int flicker = random(0,150);
+int r1 = r-flicker;
+int g1 = g-flicker;
+int b1 = b-flicker;
+if(g1<0) g1=0;
+if(r1<0) r1=0;
+if(b1<0) b1=0;
+strip.setPixelColor(x,r1,g1, b1);
+}
+strip.show();
+delay(random(250,750));
+  
+}
+
+const uint8_t strips = 1;  // number of strips
+const uint8_t strip1 = 1;  // number of strips
+int cw_pos[strips][NUM_PIXEL];  // current position within colorwheel
+uint8_t R[strips][NUM_PIXEL];  // Red value for each LED within each strip
+uint8_t G[strips][NUM_PIXEL];  // Green value for each LED within each strip
+uint8_t B[strips][NUM_PIXEL];  // Blue value for each LED within each strip
+int acc[strips];  // aurora current color
+int atc[strips];  // aurora target color
+uint8_t acb[strips];  // aurora current brightness
+uint8_t atb[strips];  // aurora target brightness
+uint8_t cw_val[3];  // temporary storage for a single set of RGB values
+float bright = 0.5;
+uint8_t cw_speed = 5;  // color change speed
+
+
+// http://192.168.178.155/modus?modus=northernlight
+void northernlight()
+{
+
+      delay(ceil(100/cw_speed));
+    if (reset){
+      reset = 0;
+      for (i = 0; i < strip1; i++){
+        acc[i] = random(290+248*i,290+248*(i+1));
+        atc[i] = acc[i];
+        acb[i] = random(1,101);
+        atb[i] = acb[i];
+        cw(cw_val,acc[i]);
+        for (j = 0; j < NUM_PIXEL; j++){
+          R[i][j] = ceil(cw_val[0]*acb[i]/100*bright);
+          G[i][j] = ceil(cw_val[1]*acb[i]/100*bright);
+          B[i][j] = ceil(cw_val[2]*acb[i]/100*bright);
+        }
+      }
+    }
+    else{
+      for (i = 0; i < strip1; i++){
+        if (acc[i] == atc[i]) atc[i] = random(290+248*i,290+248*(i+1));
+        else if (acc[i] < atc[i]) acc[i] = acc[i] + 1;
+        else acc[i] = acc[i] - 1;
+        
+        if (atb[i] == acb[i]) atb[i] = random(1,101);
+        else if (acb[i] < atb[i]) acb[i]++;
+        else acb[i]--;
+        
+        cw(cw_val,acc[i]);
+        for (j = 0; j < NUM_PIXEL; j++){
+          R[i][j] = ceil(cw_val[0]*acb[i]/100*bright);
+          G[i][j] = ceil(cw_val[1]*acb[i]/100*bright);
+          B[i][j] = ceil(cw_val[2]*acb[i]/100*bright);
+        }
+      }
+    }
+
+
+      // LED updates
+  for (i = 0; i < strip1; i++) {
+    for (j = 0; j < NUM_PIXEL; j++){
+      if (i == 0){
+        strip.setPixelColor(j,R[i][j], G[i][j], B[i][j]);
+      }
+      else if (i == 1){
+       
+      }
+      else if (i == 2){
+      
+      }
+      else if (i == 3){
+      
+      }
+      else if (i == 4){
+      
+      }
+    }
+    strip.show();
+   random(100,750);
+   
+   
+   
+  }
+}
+
+
+
+    // Colorwheel reference (takes a 3-variable array and a position within the colorwheel, updates the array with RGB values for that position)
+void cw(uint8_t c_temp[], int pos_temp){
+    if (pos_temp <= 255){
+      c_temp[0] = 255;
+      c_temp[1] = pos_temp;
+      c_temp[2] = 0;
+    }
+    else if (pos_temp <= 255*2){
+      c_temp[0] = 255*2 - pos_temp;
+      c_temp[1] = 255;
+      c_temp[2] = 0;
+    }
+    else if (pos_temp <= 255*3){
+      c_temp[0] = 0;
+      c_temp[1] = 255;
+      c_temp[2] = pos_temp - 255*2;
+    }
+    else if (pos_temp <= 255*4){
+      c_temp[0] = 0;
+      c_temp[1] = 255*4 - pos_temp;
+      c_temp[2] = 255;
+    }
+    else if (pos_temp <= 255*5){
+      c_temp[0] = pos_temp - 255*4;
+      c_temp[1] = 0;
+      c_temp[2] = 255;
+    }
+    else if (pos_temp <= 255*6){
+      c_temp[0] = 255;
+      c_temp[1] = 0;
+      c_temp[2] = 255*6 - pos_temp;
+    }
+}
+
 
  /* ------------------ NTP --------------------- */
 
@@ -1096,17 +1261,25 @@ void getUpdateInfo()
     Serial.println("Parsing JSON.");
 
     //DynamicJsonBuffer jsonBuffer;
-    StaticJsonBuffer<256> jsonBuffer;
-    JsonObject &responseJson = jsonBuffer.parseObject(line);
-    if (responseJson.success())
-    {
+    //StaticJsonBuffer<256> jsonBuffer;
+    DynamicJsonDocument doc(1024);
+
+   //JsonObject &responseJson = jsonBuffer.parseObject(line);
+   // if (responseJson.success())
+   auto error = deserializeJson(doc, line);
+if (error) {
+    Serial.print(F("deserializeJson() failed with code "));
+    Serial.println(error.c_str());
+    WeatherStatus += "Parsing failed!";
+    return;
+}else {
       
   if(settings.getUpdateStable())
   {
     Serial.println("Stable Version");
-  updateInfo = responseJson["channel"]["stable"]["version"].as<String>();
+  updateInfo = doc["channel"]["stable"]["version"].as<String>();
   }else{
-    updateInfo = responseJson["channel"]["unstable"]["version"].as<String>();
+    updateInfo = doc["channel"]["unstable"]["version"].as<String>();
   Serial.println("Unstable Version");
   }
       
@@ -1380,6 +1553,22 @@ if(modus=="clockInfo")
 {
   colorWipe(strip.Color(defaultColors[clockInfoColor].red,defaultColors[clockInfoColor].green,defaultColors[clockInfoColor].blue), 10);
 }
+
+if(modus=="northernlight")
+{
+reset = 1;
+  northernlight();
+ 
+}
+
+if(modus=="fire")
+{
+startShow(0);
+  fire();
+ 
+}
+
+
 
 callRoot();
     
