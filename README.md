@@ -6,7 +6,7 @@ Web Setup Idee von http://tmw-it.ch/qlockwork/
 ======================= Needed Libraries =======================
 
 
-ArduinoJson.h
+ArduinoJson.h V6
 
 ArduinoOTA.h
 
