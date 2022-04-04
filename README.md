@@ -34,7 +34,7 @@ WiFiManager.h          //https://github.com/tzapu/WiFiManager WiFi Configuration
 
 ======================= Initial Setup =======================
 
-You do not have to edit the sketch, all settings can be wireless via WLAN.
+You do not have to edit the sketch, all settings can be edit via WLAN.
 
 After the first flash, the Liqud Clock circle will be blue, now you will find a WiFi network called Liquid. Connect your device and edit the Wi-Fi settings.
 
