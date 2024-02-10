@@ -226,7 +226,7 @@ void loop() {
     getntp();
 
     getUpdateInfo();
-if( modus = "WeatherTemperatur")
+if( modus == "WeatherTemperatur")
 { 
   getWeatherTemperature();
 }
