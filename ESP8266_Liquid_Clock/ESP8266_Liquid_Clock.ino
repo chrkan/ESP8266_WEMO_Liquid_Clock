@@ -33,7 +33,7 @@
 #include "Settings.h"
 #include "Timezones.h"
 
-#define FirmewareVersion  "20200322"
+#define FirmewareVersion  "20240210"
 
 /******************************************************************************
   Init.
@@ -197,7 +197,7 @@ void loop() {
 
     if (second() % settings.getLdrSync() == 0  )
     {
-      ledBrightness();
+     // ledBrightness();
 
       if (modus == "clock")
       {
@@ -226,8 +226,11 @@ void loop() {
     getntp();
 
     getUpdateInfo();
-
-    getWeatherTemperature();
+if( modus = "WeatherTemperatur")
+{ 
+  getWeatherTemperature();
+}
+    
 
 
     //Wird nur ausgeschaltet wenn auch in den Einstellungen Autowlan AN ist!!!
@@ -619,7 +622,7 @@ void ledBrightness()
 /******************************************************************************
   Get Moonphase
 ******************************************************************************/
-int getMoonphase(int y, int m, int d)
+void getMoonphase(int y, int m, int d)
 {
 
   int b;
@@ -714,9 +717,9 @@ void show_Moonphase()
 /******************************************************************************
   Get outdoor conditions from Yahoo.
 ******************************************************************************/
-String getWeatherTemperature()
+void getWeatherTemperature()
 {
-  /**
+  
    if (WiFi.status() == WL_CONNECTED)
     {
   Serial.println(F("Get Weather"));
@@ -728,7 +731,7 @@ String getWeatherTemperature()
   if (!client.connect(servername, 80)) {
     Serial.println(F("Weather Connection failed"));
     WeatherStatus  += "Connection failed";
-    return WeatherStatus;
+    //return WeatherStatus;
   }
 
   Serial.println(F("Connected!"));
@@ -748,7 +751,7 @@ String getWeatherTemperature()
   if (client.println() == 0) {
     Serial.println(F("Weather: Failed to send request"));
     WeatherStatus += "Failed to send request";
-    return WeatherStatus;
+    //return WeatherStatus;
   }
 
   // Check HTTP status
@@ -759,7 +762,7 @@ String getWeatherTemperature()
     WeatherStatus += "Unexpected response: ";
     Serial.println(status);
     WeatherStatus += status;
-    return WeatherStatus;
+   // return WeatherStatus;
   }
 
   // Skip HTTP headers
@@ -767,7 +770,7 @@ String getWeatherTemperature()
   if (!client.find(endOfHeaders)) {
     Serial.println(F("Invalid response"));
     WeatherStatus += "Invalid response";
-    return WeatherStatus;
+ //   return WeatherStatus;
   }
 
   // Allocate JsonBuffer
@@ -781,7 +784,7 @@ String getWeatherTemperature()
     Serial.print(F("deserializeJson() failed with code "));
     Serial.println(error.c_str());
     WeatherStatus += "Parsing failed!";
-    return WeatherStatus;
+   // return WeatherStatus;
   }
 
 
@@ -799,9 +802,9 @@ String getWeatherTemperature()
 
   // Disconnect
   client.stop();
-  return "OK";
+  //return "OK";
   }
-  **/
+ 
 }
 
 
@@ -1352,7 +1355,7 @@ String htmlButton()
 {
   String message = "</td></tr><tr><td  style=\"height: 10%;\">";
   message += "________________________________<br>";
-  message += "<a href=\"https://github.com/chrkan/ESP8266_WEMO_Liquid_Clock\">ckany 2018</a><br>";
+  message += "<a href=\"https://github.com/chrkan/ESP8266_WEMO_Liquid_Clock\" style=\"color: white\">ckany 2018 - 2024</a><br>";
 
   message += "</td></tr></tbody></table>     ";
   message += "</span>";
@@ -1407,7 +1410,9 @@ void handleRoot()
   } else {
     message += "deactive ";
   }
-  message += String(ldr.value()) + " % " + String(Brightness) + " LED (min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
+  //message += String(ldr.value()) + " % " + String(Brightness) + " LED (min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
+  message += String(Brightness) + " LED (min: " + String(LDR_MANUAL_MIN) + ", max: " + String(LDR_MANUAL_MAX) + ")";
+  
   message += "<br>Help Dots every: " + String(settings.getldrDot()) + " Pixels, by " + String(settings.getBrightness()) + "% Brightness." ;
 
 
